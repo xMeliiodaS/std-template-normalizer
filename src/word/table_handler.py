@@ -22,7 +22,7 @@ def set_landscape_for_all_sections(docx_path: str, output_path: str = None):
     document.save(output_path or docx_path)
 
 
-def set_tables_autofit_to_window(docx_path: str,output_path: str = None, clear_column_widths: bool = True):
+def set_tables_autofit_to_window(docx_path: str, output_path: str = None, clear_column_widths: bool = True):
     """
     Applies Word's 'Layout -> AutoFit -> AutoFit to Window' to all tables in a .docx:
       - Set table preferred width to 100% (pct=5000, meaning 100%).
@@ -125,7 +125,7 @@ def copy_table_rows_excluding_header_into_table_with_id(
         dst_docx_path: str,
         output_path: str = None,
         src_table_index: int = 0,
-        expected_target_headers: list[str] = ["ID"]
+        expected_target_headers=None
 ):
     """
     Copy all rows except the header from a source table and paste into the target table
@@ -140,6 +140,8 @@ def copy_table_rows_excluding_header_into_table_with_id(
         expected_target_headers: list of header labels to identify target table
     """
     # Load docs
+    if expected_target_headers is None:
+        expected_target_headers = ["ID"]
     src = Document(src_docx_path)
     dst = Document(dst_docx_path)
 
@@ -190,4 +192,83 @@ def copy_table_rows_excluding_header_into_table_with_id(
         for tr in rows_to_copy:
             target_tbl_elm.append(tr)
 
+    set_normal_style_in_second_column(target_table, skip_header=True)
+    remove_numbering_in_second_column(target_table, skip_header=True)
+
     dst.save(output_path or dst_docx_path)
+
+
+def set_normal_style_in_second_column(table: Table, skip_header: bool = True) -> int:
+    """
+    Set paragraph style to 'Normal' for all paragraphs in the second column (Headline).
+    Returns the number of paragraphs updated.
+    """
+    if not table.rows:
+        return 0
+
+    start_row = 1 if skip_header else 0
+    updated = 0
+
+    for row in table.rows[start_row:]:
+        if len(row.cells) < 2:
+            continue
+        headline_cell = row.cells[1]
+        for p in headline_cell.paragraphs:
+            # Simple, robust: assign by style name
+            p.style = 'Normal'
+            updated += 1
+
+    return updated
+
+
+def remove_numbering_in_second_column(table, skip_header=True, non_numbered_style_name="Normal"):
+    """
+    Remove list numbering from the second column and prevent style-level numbering
+    by assigning a non-numbered style (e.g., 'Normal').
+
+    Returns the number of paragraphs modified.
+    """
+    if not table.rows:
+        return 0
+
+    start_row = 1 if skip_header else 0
+    changed = 0
+
+    for row in table.rows[start_row:]:
+        if len(row.cells) < 2:
+            continue
+
+        headline_cell = row.cells[1]
+        for p in headline_cell.paragraphs:
+            p_elm = p._element
+
+            # Ensure we have <w:pPr>
+            pPr = p_elm.find(qn('w:pPr'))
+            if pPr is None:
+                pPr = OxmlElement('w:pPr')
+                p_elm.insert(0, pPr)
+
+            # Remove any existing numbering and outline level
+            numPr = pPr.find(qn('w:numPr'))
+            if numPr is not None:
+                pPr.remove(numPr)
+
+            outlineLvl = pPr.find(qn('w:outlineLvl'))
+            if outlineLvl is not None:
+                pPr.remove(outlineLvl)
+
+            # Assign a non-numbered style (breaks style-level numbering inheritance)
+            try:
+                # If the style exists, python-docx sets <w:pStyle w:val="Normal">
+                p.style = p.part.document.styles[non_numbered_style_name]
+            except KeyError:
+                # Fallback: explicitly set <w:pStyle/> to Normal even if style not in cache
+                pStyle = pPr.find(qn('w:pStyle'))
+                if pStyle is None:
+                    pStyle = OxmlElement('w:pStyle')
+                    pPr.insert(0, pStyle)
+                pStyle.set(qn('w:val'), non_numbered_style_name)
+
+            changed += 1
+
+    return changed
