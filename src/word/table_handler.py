@@ -22,7 +22,7 @@ def set_landscape_for_all_sections(docx_path: str, output_path: str = None):
     document.save(output_path or docx_path)
 
 
-def set_tables_autofit_to_window(docx_path: str, clear_column_widths: bool = True):
+def set_tables_autofit_to_window(docx_path: str,output_path: str = None, clear_column_widths: bool = True):
     """
     Applies Word's 'Layout -> AutoFit -> AutoFit to Window' to all tables in a .docx:
       - Set table preferred width to 100% (pct=5000, meaning 100%).
@@ -70,7 +70,7 @@ def set_tables_autofit_to_window(docx_path: str, clear_column_widths: bool = Tru
                     if tcW is not None:
                         tcPr.remove(tcW)
 
-    doc.save(docx_path)
+    doc.save(output_path or docx_path)
 
 
 from copy import deepcopy
