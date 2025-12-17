@@ -278,8 +278,7 @@ def set_table_column_widths(
         docx_path: str,
         output_path: str = None,
         widths_cm: list[float] = None,
-        expected_target_headers: list[str] = None,
-        table_index: int = None
+        expected_target_headers: list[str] = None
 ) -> None:
     """
     Set explicit (fixed) column widths for a target table.
@@ -288,32 +287,24 @@ def set_table_column_widths(
         docx_path: Path to input .docx.
         output_path: Where to save. Overwrites docx_path if None.
         widths_cm: List of column widths in centimeters. MUST match the number of columns.
-        expected_target_headers: Header labels used to locate the table (preferred).
-        table_index: 0-based index of the table (fallback).
+        expected_target_headers: Header labels used to locate the table.
 
     Raises:
         ValueError: If widths_cm is missing/empty, table not found, or length mismatch.
-        IndexError: If table_index is out of range.
     """
     if not widths_cm or len(widths_cm) == 0:
         raise ValueError("widths_cm must be a non-empty list of column widths (cm).")
 
+    if expected_target_headers is None:
+        expected_target_headers = ["ID"]
+
     doc = Document(docx_path)
 
     # ---- Locate target table ----
-    target_table: Table | None = None
-
-    if expected_target_headers:
-        try:
-            target_table = _find_table_by_header(doc, expected_headers=expected_target_headers)
-        except Exception as e:
-            raise ValueError(f"Table with headers {expected_target_headers} not found: {e}")
-    elif table_index is not None:
-        if table_index < 0 or table_index >= len(doc.tables):
-            raise IndexError(f"table_index {table_index} out of range. Document has {len(doc.tables)} tables.")
-        target_table = doc.tables[table_index]
-    else:
-        raise ValueError("Provide either expected_target_headers or table_index to identify the table.")
+    try:
+        target_table = _find_table_by_header(doc, expected_headers=expected_target_headers)
+    except Exception as e:
+        raise ValueError(f"Table with headers {expected_target_headers} not found: {e}")
 
     # ---- Validate column count ----
     if len(target_table.rows) == 0:

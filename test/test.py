@@ -28,8 +28,8 @@ class TestExcelViolations(unittest.TestCase):
         set_table_column_widths(
             self.output_word,
             self.output_word,
-            widths_cm=[1.67, 3.07, 10.0, 10.5, 3.25, 3.0, 3.0, 4.55],
-            table_index=3  # Change this based on what the debug shows
+            widths_cm=[1.67, 3.07, 10.0, 10.5, 3.25, 3.0, 3.0, 4.55]
+            # table_index=3  # Change this based on what the debug shows
         )
 
 if __name__ == "__main__":
