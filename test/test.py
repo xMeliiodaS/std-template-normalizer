@@ -3,7 +3,7 @@ import os, unittest
 from src.config.config_provider import ConfigProvider
 from src.word.table_handler import (set_landscape_for_all_sections,
                                     set_tables_autofit_to_window,
-                                    copy_table_rows_excluding_header_into_table_with_id)
+                                    copy_table_rows_excluding_header_into_table_with_id, set_table_column_widths)
 
 
 class TestExcelViolations(unittest.TestCase):
@@ -16,8 +16,21 @@ class TestExcelViolations(unittest.TestCase):
     def test_excel_violations(self):
         """Validate that Excel is consistent and generate violations HTML report."""
         set_landscape_for_all_sections(self.exported_word, self.output_word)
+
         set_tables_autofit_to_window(self.exported_word, self.output_word)
-        copy_table_rows_excluding_header_into_table_with_id(self.exported_word, self.template_ready_word, self.output_word)
+
+        copy_table_rows_excluding_header_into_table_with_id(
+            self.exported_word,
+            self.template_ready_word,
+            self.output_word
+        )
+
+        set_table_column_widths(
+            self.output_word,
+            self.output_word,
+            widths_cm=[1.67, 3.07, 10.0, 10.5, 3.25, 3.0, 3.0, 4.55],
+            table_index=3  # Change this based on what the debug shows
+        )
 
 if __name__ == "__main__":
     appdata_folder = os.path.join(

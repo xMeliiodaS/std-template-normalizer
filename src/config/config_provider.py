@@ -13,6 +13,9 @@ class ConfigProvider:
     def load_config_json(path=None):
         # TO_BE_CHANGED
         path = os.path.join(os.getcwd(), "config.json")
+        if not os.path.exists(path):
+            path = os.path.join(os.path.dirname(os.getcwd()), "config.json")
+
         try:
             with open(path, 'r', encoding='utf-8') as f:
                 data = json.load(f)

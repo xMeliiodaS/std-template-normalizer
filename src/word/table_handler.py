@@ -1,4 +1,7 @@
+from copy import deepcopy
 from docx import Document
+from docx.shared import Cm
+from docx.table import Table
 from docx.enum.section import WD_ORIENT
 from docx.oxml.shared import OxmlElement, qn
 
@@ -71,12 +74,6 @@ def set_tables_autofit_to_window(docx_path: str, output_path: str = None, clear_
                         tcPr.remove(tcW)
 
     doc.save(output_path or docx_path)
-
-
-from copy import deepcopy
-from docx import Document
-from docx.oxml.shared import qn
-from docx.table import Table
 
 
 def _row_is_empty(row) -> bool:
@@ -272,3 +269,112 @@ def remove_numbering_in_second_column(table, skip_header=True, non_numbered_styl
             changed += 1
 
     return changed
+
+
+# --------------------------------------------------------------------------------------------------------------------
+
+
+def set_table_column_widths(
+        docx_path: str,
+        output_path: str = None,
+        widths_cm: list[float] = None,
+        expected_target_headers: list[str] = None,
+        table_index: int = None
+) -> None:
+    """
+    Set explicit (fixed) column widths for a target table.
+
+    Args:
+        docx_path: Path to input .docx.
+        output_path: Where to save. Overwrites docx_path if None.
+        widths_cm: List of column widths in centimeters. MUST match the number of columns.
+        expected_target_headers: Header labels used to locate the table (preferred).
+        table_index: 0-based index of the table (fallback).
+
+    Raises:
+        ValueError: If widths_cm is missing/empty, table not found, or length mismatch.
+        IndexError: If table_index is out of range.
+    """
+    if not widths_cm or len(widths_cm) == 0:
+        raise ValueError("widths_cm must be a non-empty list of column widths (cm).")
+
+    doc = Document(docx_path)
+
+    # ---- Locate target table ----
+    target_table: Table | None = None
+
+    if expected_target_headers:
+        try:
+            target_table = _find_table_by_header(doc, expected_headers=expected_target_headers)
+        except Exception as e:
+            raise ValueError(f"Table with headers {expected_target_headers} not found: {e}")
+    elif table_index is not None:
+        if table_index < 0 or table_index >= len(doc.tables):
+            raise IndexError(f"table_index {table_index} out of range. Document has {len(doc.tables)} tables.")
+        target_table = doc.tables[table_index]
+    else:
+        raise ValueError("Provide either expected_target_headers or table_index to identify the table.")
+
+    # ---- Validate column count ----
+    if len(target_table.rows) == 0:
+        raise ValueError("Target table has no rows.")
+    col_count = len(target_table.rows[0].cells)
+    if col_count != len(widths_cm):
+        raise ValueError(f"Width count ({len(widths_cm)}) must equal column count ({col_count}).")
+
+    # ---- Set table to fixed layout (so Word honors exact widths) ----
+    tbl = target_table._tbl
+    tblPr = tbl.tblPr
+    if tblPr is None:
+        tblPr = OxmlElement('w:tblPr')
+        tbl.insert(0, tblPr)
+
+    # Ensure <w:tblLayout w:type="fixed"/>
+    tblLayout = tblPr.find(qn('w:tblLayout'))
+    if tblLayout is None:
+        tblLayout = OxmlElement('w:tblLayout')
+        tblPr.append(tblLayout)
+    tblLayout.set(qn('w:type'), 'fixed')
+
+    # Optional: set table preferred width to 'auto' by removing pct/dxa to avoid conflicts
+    tblW = tblPr.find(qn('w:tblW'))
+    if tblW is not None:
+        tblPr.remove(tblW)
+
+    # ---- Define the grid columns with exact widths ----
+    def cm_to_twips(cm: float) -> int:
+        return int(round((cm / 2.54) * 1440))
+
+    tblGrid = tbl.find(qn('w:tblGrid'))
+    if tblGrid is None:
+        tblGrid = OxmlElement('w:tblGrid')
+        if tblPr is not None and tblPr.getparent() is not None:
+            tblPr.addnext(tblGrid)
+        else:
+            tbl.insert(1, tblGrid)
+
+    # Clear existing gridCol children
+    for child in list(tblGrid):
+        tblGrid.remove(child)
+
+    for cm in widths_cm:
+        gridCol = OxmlElement('w:gridCol')
+        gridCol.set(qn('w:w'), str(cm_to_twips(cm)))
+        tblGrid.append(gridCol)
+
+    # ---- Apply widths to each cell in the first row ----
+    first_row = target_table.rows[0]
+    for i, cm in enumerate(widths_cm):
+        first_row.cells[i].width = Cm(cm)
+
+    # Remove per-cell tcW from data rows to avoid conflicting widths
+    for row in target_table.rows[1:]:
+        for cell in row.cells:
+            tc = cell._tc
+            tcPr = tc.get_or_add_tcPr()
+            tcW = tcPr.find(qn('w:tcW'))
+            if tcW is not None:
+                tcPr.remove(tcW)
+
+    # ---- Save the document ----
+    doc.save(output_path or docx_path)
