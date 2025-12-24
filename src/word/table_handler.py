@@ -1,6 +1,6 @@
 from copy import deepcopy
 from docx import Document
-from docx.shared import Cm
+from docx.shared import Cm, Pt
 from docx.table import Table
 from docx.enum.section import WD_ORIENT
 from docx.oxml.shared import OxmlElement, qn
@@ -368,4 +368,35 @@ def set_table_column_widths(
                 tcPr.remove(tcW)
 
     # ---- Save the document ----
+    doc.save(output_path or docx_path)
+
+
+def set_paragraph_spacing(docx_path: str, output_path: str = None, space_before_pt: float = 0, space_after_pt: float = 3):
+    """
+    Set paragraph spacing for all paragraphs in a Word document.
+    Sets "Before" spacing to 0 pt and "After" spacing to 3 pt by default.
+
+    Args:
+        docx_path: Path to input .docx file
+        output_path: Path to save the modified document. Overwrites docx_path if None.
+        space_before_pt: Spacing before paragraph in points (default: 0)
+        space_after_pt: Spacing after paragraph in points (default: 3)
+    """
+    doc = Document(docx_path)
+    
+    # Set spacing for all paragraphs in the document body
+    for paragraph in doc.paragraphs:
+        paragraph_format = paragraph.paragraph_format
+        paragraph_format.space_before = Pt(space_before_pt)
+        paragraph_format.space_after = Pt(space_after_pt)
+    
+    # Also set spacing for paragraphs in tables
+    for table in doc.tables:
+        for row in table.rows:
+            for cell in row.cells:
+                for paragraph in cell.paragraphs:
+                    paragraph_format = paragraph.paragraph_format
+                    paragraph_format.space_before = Pt(space_before_pt)
+                    paragraph_format.space_after = Pt(space_after_pt)
+    
     doc.save(output_path or docx_path)
