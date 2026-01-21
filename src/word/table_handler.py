@@ -1,9 +1,31 @@
 from copy import deepcopy
+import os
 from docx import Document
 from docx.shared import Cm, Pt
 from docx.table import Table
 from docx.enum.section import WD_ORIENT
 from docx.oxml.shared import OxmlElement, qn
+
+
+def _ensure_docx_extension(path: str) -> str:
+    """Ensure the path has .docx extension. Returns the path with .docx if it doesn't have it."""
+    if path and not path.endswith('.docx'):
+        return path + '.docx'
+    return path
+
+
+def _get_docx_path(path: str) -> str:
+    """Get the docx path, checking if .docx extension needs to be added for opening."""
+    if path.endswith('.docx'):
+        return path
+    # Check if file exists with .docx extension
+    if os.path.exists(path + '.docx'):
+        return path + '.docx'
+    # If file exists without extension, try to open it (python-docx can handle it)
+    if os.path.exists(path):
+        return path
+    # If neither exists, try with .docx extension (might be creating new file)
+    return path + '.docx'
 
 
 def set_landscape_for_all_sections(docx_path: str, output_path: str = None):
@@ -12,7 +34,7 @@ def set_landscape_for_all_sections(docx_path: str, output_path: str = None):
     - Sets orientation to LANDSCAPE.
     - Swaps width/height only if the current page is Portrait (width < height).
     """
-    document = Document(docx_path)
+    document = Document(_get_docx_path(docx_path))
 
     for section in document.sections:
         # Always set orientation
@@ -22,7 +44,8 @@ def set_landscape_for_all_sections(docx_path: str, output_path: str = None):
         if section.page_width < section.page_height:
             section.page_width, section.page_height = section.page_height, section.page_width
 
-    document.save(output_path or docx_path)
+    save_path = _ensure_docx_extension(output_path or docx_path)
+    document.save(save_path)
 
 
 def set_tables_autofit_to_window(docx_path: str, output_path: str = None, clear_column_widths: bool = True):
@@ -37,7 +60,7 @@ def set_tables_autofit_to_window(docx_path: str, output_path: str = None, clear_
         output_path: str | None - path to save; overwrites input if None
         clear_column_widths: bool - remove <w:tcW> from cells to allow true autofit
     """
-    doc = Document(docx_path)
+    doc = Document(_get_docx_path(docx_path))
 
     for table in doc.tables:
         tbl = table._tbl  # <w:tbl>
@@ -73,7 +96,8 @@ def set_tables_autofit_to_window(docx_path: str, output_path: str = None, clear_
                     if tcW is not None:
                         tcPr.remove(tcW)
 
-    doc.save(output_path or docx_path)
+    save_path = _ensure_docx_extension(output_path or docx_path)
+    doc.save(save_path)
 
 
 def _row_is_empty(row) -> bool:
@@ -139,8 +163,8 @@ def copy_table_rows_excluding_header_into_table_with_id(
     # Load docs
     if expected_target_headers is None:
         expected_target_headers = ["ID"]
-    src = Document(src_docx_path)
-    dst = Document(dst_docx_path)
+    src = Document(_get_docx_path(src_docx_path))
+    dst = Document(_get_docx_path(dst_docx_path))
 
     # Validate source table
     if src_table_index < 0 or src_table_index >= len(src.tables):
@@ -192,7 +216,8 @@ def copy_table_rows_excluding_header_into_table_with_id(
     set_normal_style_in_second_column(target_table, skip_header=True)
     remove_numbering_in_second_column(target_table, skip_header=True)
 
-    dst.save(output_path or dst_docx_path)
+    save_path = _ensure_docx_extension(output_path or dst_docx_path)
+    dst.save(save_path)
 
 
 def set_normal_style_in_second_column(table: Table, skip_header: bool = True) -> int:
@@ -298,7 +323,7 @@ def set_table_column_widths(
     if expected_target_headers is None:
         expected_target_headers = ["ID"]
 
-    doc = Document(docx_path)
+    doc = Document(_get_docx_path(docx_path))
 
     # ---- Locate target table ----
     try:
@@ -368,7 +393,8 @@ def set_table_column_widths(
                 tcPr.remove(tcW)
 
     # ---- Save the document ----
-    doc.save(output_path or docx_path)
+    save_path = _ensure_docx_extension(output_path or docx_path)
+    doc.save(save_path)
 
 
 def set_paragraph_spacing(docx_path: str, output_path: str = None, space_before_pt: float = 0, space_after_pt: float = 3):
@@ -382,7 +408,7 @@ def set_paragraph_spacing(docx_path: str, output_path: str = None, space_before_
         space_before_pt: Spacing before paragraph in points (default: 0)
         space_after_pt: Spacing after paragraph in points (default: 3)
     """
-    doc = Document(docx_path)
+    doc = Document(_get_docx_path(docx_path))
     
     # Set spacing for all paragraphs in the document body
     for paragraph in doc.paragraphs:
@@ -399,4 +425,5 @@ def set_paragraph_spacing(docx_path: str, output_path: str = None, space_before_
                     paragraph_format.space_before = Pt(space_before_pt)
                     paragraph_format.space_after = Pt(space_after_pt)
     
-    doc.save(output_path or docx_path)
+    save_path = _ensure_docx_extension(output_path or docx_path)
+    doc.save(save_path)

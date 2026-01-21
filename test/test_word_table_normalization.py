@@ -11,9 +11,12 @@ from src.word.placeholder_replacer import replace_placeholders_using_config
 class TestWordTableNormalization(unittest.TestCase):
     def setUp(self):
         self.config = ConfigProvider.load_config_json()
-        self.exported_word = self.config["Exported_word"]
-        self.template_ready_word = self.config["Template_word"]
-        self.output_word = self.config["Output_word"]
+        self.exported_word = self.config["Exported_STD"]
+        self.template_ready_word = self.config["Template_protocol"]
+        self.output_word = self.config["Normalized_protocol"]
+        # Ensure output_word has .docx extension
+        if not self.output_word.endswith('.docx'):
+            self.output_word = self.output_word + '.docx'
 
     def test_word_table_normalization(self):
         """Validate that Excel is consistent and generate violations HTML report."""
@@ -41,7 +44,7 @@ class TestWordTableNormalization(unittest.TestCase):
 if __name__ == "__main__":
     appdata_folder = os.path.join(
         os.environ.get('APPDATA', os.path.expanduser('~\\AppData\\Roaming')),
-        "TO_BE_CHANGED"
+        "ste_tool_studio"
     )
     config_path = os.path.join(appdata_folder, "config.json")
 

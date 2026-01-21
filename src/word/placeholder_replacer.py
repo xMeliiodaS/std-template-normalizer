@@ -1,4 +1,5 @@
 import json
+import os
 from docx import Document
 
 from src.config.config_provider import ConfigProvider
@@ -40,15 +41,27 @@ def replace_text_in_table(table, replacements: dict):
 
 def replace_placeholders_using_config(docx_path, output_path=None):
     config = ConfigProvider.load_config_json()
+    
+    # Ensure output_path has .docx extension if it doesn't
+    if output_path and not output_path.endswith('.docx'):
+        output_path = output_path + '.docx'
+    
+    # Ensure docx_path exists and has .docx extension
+    if not docx_path.endswith('.docx'):
+        if os.path.exists(docx_path + '.docx'):
+            docx_path = docx_path + '.docx'
+        else:
+            raise ValueError(f"Document path must be a .docx file: {docx_path}")
+    
     doc = Document(docx_path)
 
     replacements = {
-        "ADD_DOC_STD#": config.get("DOC_STD", ""),
-        "ADD_STD_NAME": config.get("STD_name", ""),
-        "ADD_PLAN_NUMBER": config.get("PLAN-number", ""),
-        "ADD_PREPARED_BY": config.get("Prepared_by", ""),
-        "ADD_TEST_PROTOCOL": config.get("Test_protocol", ""),
-        "ADD_FOOTER": config.get("Footer", ""),
+        "ADD_DOC_STD#": config.get("doc_number", config.get("DOC_STD", "")),
+        "ADD_STD_NAME": config.get("std_name", config.get("STD_name", "")),
+        "ADD_PLAN_NUMBER": config.get("test_plan", config.get("PLAN-number", "")),
+        "ADD_PREPARED_BY": config.get("prepared_by", config.get("Prepared_by", "")),
+        "ADD_TEST_PROTOCOL": config.get("test_plan", config.get("Test_protocol", "")),
+        "ADD_FOOTER": config.get("footer", config.get("Footer", "")),
     }
 
     # ---- Body ----
