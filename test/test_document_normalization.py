@@ -25,7 +25,7 @@ class TestProtocolNormalization(unittest.TestCase):
         if not self.output_word.endswith('.docx'):
             self.output_word += '.docx'
 
-    def test_protocol_normalization(self):
+    def test_document_normalization(self):
         """
         Validate that Word tables are normalized and placeholders are replaced.
 
@@ -77,5 +77,5 @@ if __name__ == "__main__":
 
     # Create test suite and run
     suite = unittest.TestSuite()
-    suite.addTest(TestProtocolNormalization('test_protocol_normalization'))
+    suite.addTest(TestProtocolNormalization('test_document_normalization'))
     unittest.TextTestRunner(verbosity=2).run(suite)
