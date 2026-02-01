@@ -6,6 +6,34 @@ from src.config.config_provider import ConfigProvider
 from src.config.constants import DOCX_EXTENSION, WordPlaceholders, ConfigKeys
 
 
+# doc_type from external config -> replacement values for DOC_TYPE, DOC_RECORD, DOC_TYPE_STx
+_DOC_TYPE_REPLACEMENT_MAP = {
+    "protocol": {
+        WordPlaceholders.DOC_TYPE: "Design (STD)",
+        WordPlaceholders.DOC_RECORD: "Protocol",
+        WordPlaceholders.DOC_TYPE_STx: "STD",
+    },
+    "report": {
+        WordPlaceholders.DOC_TYPE: "Report (STR)",
+        WordPlaceholders.DOC_RECORD: "Report",
+        WordPlaceholders.DOC_TYPE_STx: "STR",
+    },
+}
+
+
+def get_doc_type_replacements(doc_type: str):
+    """
+    Get replacement values for DOC_TYPE, DOC_RECORD, and DOC_TYPE_STx placeholders
+    based on the doc_type from the external config (e.g. "protocol", "report").
+
+    :param doc_type: Value of "doc_type" from config (e.g. "protocol", "report").
+    :return: Dict mapping placeholder keys to replacement strings, or None if doc_type is not mapped.
+    """
+    if not doc_type:
+        return None
+    return _DOC_TYPE_REPLACEMENT_MAP.get(doc_type.strip().lower())
+
+
 def _replace_text_in_paragraph(paragraph, replacements: dict):
     original_text = paragraph.text
     new_text = original_text
@@ -67,6 +95,12 @@ def replace_placeholders_using_config(docx_path, output_path=None):
         WordPlaceholders.TEST_PROTOCOL: config.get(ConfigKeys.TEST_PROTOCOL, config.get(ConfigKeys.LEGACY_KEYS["TEST_PROTOCOL"], "")),
         WordPlaceholders.FOOTER: config.get(ConfigKeys.FOOTER, config.get(ConfigKeys.LEGACY_KEYS["FOOTER"], "")),
     }
+
+    # Override DOC_TYPE, DOC_RECORD, DOC_TYPE_STx when doc_type is "protocol" or "report"
+    doc_type_from_config = config.get(ConfigKeys.DOC_TYPE) or config.get(ConfigKeys.LEGACY_KEYS["DOC_TYPE"])
+    doc_type_replacements = get_doc_type_replacements(doc_type_from_config)
+    if doc_type_replacements:
+        replacements.update(doc_type_replacements)
 
     # ---- Body ----
     for paragraph in doc.paragraphs:
