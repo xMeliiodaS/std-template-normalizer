@@ -27,6 +27,9 @@ class ConfigKeys:
     TEMPLATE_PROTOCOL = "Template_protocol"
     NORMALIZED_PROTOCOL = "Normalized_protocol"
 
+    DOC_TYPE = "doc_type"
+    DOC_STX = "doc_stx"
+    DOC_RECORD = "doc_record"
     DOC_STD = "doc_number"
     STD_NAME = "std_name"
     TEST_PLAN = "test_plan"
@@ -35,6 +38,9 @@ class ConfigKeys:
     FOOTER = "footer"
 
     LEGACY_KEYS = {
+        "DOC_TYPE": "Doc_type",
+        "DOC_TYPE_STX": "Doc_stx",
+        "DOC_RECORD": "Doc_record",
         "DOC_STD": "DOC_STD",
         "STD_NAME": "STD_name",
         "PLAN_NUMBER": "PLAN-number",
@@ -49,6 +55,10 @@ class ConfigKeys:
 
 class WordPlaceholders:
     """Word document placeholder constants."""
+
+    DOC_TYPE = "ADD_DOC_TYPE"
+    DOC_TYPE_STx = "ADD_DOC_STX"
+    DOC_RECORD = "ADD_DOC_RECORD"
 
     DOC_STD = "ADD_DOC_STD#"
     STD_NAME = "ADD_STD_NAME"

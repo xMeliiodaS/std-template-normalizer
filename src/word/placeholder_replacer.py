@@ -57,6 +57,9 @@ def replace_placeholders_using_config(docx_path, output_path=None):
     doc = Document(docx_path)
 
     replacements = {
+        WordPlaceholders.DOC_TYPE: config.get(ConfigKeys.DOC_TYPE, config.get(ConfigKeys.LEGACY_KEYS["DOC_TYPE"], "")),
+        WordPlaceholders.DOC_TYPE_STx: config.get(ConfigKeys.DOC_STX, config.get(ConfigKeys.LEGACY_KEYS["DOC_TYPE_STX"], "")),
+        WordPlaceholders.DOC_RECORD: config.get(ConfigKeys.DOC_RECORD, config.get(ConfigKeys.LEGACY_KEYS["DOC_RECORD"], "")),
         WordPlaceholders.DOC_STD: config.get(ConfigKeys.DOC_STD, config.get(ConfigKeys.LEGACY_KEYS["DOC_STD"], "")),
         WordPlaceholders.STD_NAME: config.get(ConfigKeys.STD_NAME, config.get(ConfigKeys.LEGACY_KEYS["STD_NAME"], "")),
         WordPlaceholders.PLAN_NUMBER: config.get(ConfigKeys.TEST_PLAN, config.get(ConfigKeys.LEGACY_KEYS["PLAN_NUMBER"], "")),
