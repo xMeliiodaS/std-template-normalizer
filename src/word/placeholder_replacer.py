@@ -3,6 +3,7 @@ import os
 from docx import Document
 
 from src.config.config_provider import ConfigProvider
+from src.config.constants import DOCX_EXTENSION, WordPlaceholders, ConfigKeys
 
 
 def _replace_text_in_paragraph(paragraph, replacements: dict):
@@ -43,25 +44,25 @@ def replace_placeholders_using_config(docx_path, output_path=None):
     config = ConfigProvider.load_config_json()
     
     # Ensure output_path has .docx extension if it doesn't
-    if output_path and not output_path.endswith('.docx'):
-        output_path = output_path + '.docx'
+    if output_path and not output_path.endswith(DOCX_EXTENSION):
+        output_path = output_path + DOCX_EXTENSION
     
     # Ensure docx_path exists and has .docx extension
-    if not docx_path.endswith('.docx'):
-        if os.path.exists(docx_path + '.docx'):
-            docx_path = docx_path + '.docx'
+    if not docx_path.endswith(DOCX_EXTENSION):
+        if os.path.exists(docx_path + DOCX_EXTENSION):
+            docx_path = docx_path + DOCX_EXTENSION
         else:
-            raise ValueError(f"Document path must be a .docx file: {docx_path}")
-    
+            raise ValueError(f"Document path must be a {DOCX_EXTENSION} file: {docx_path}")
+
     doc = Document(docx_path)
 
     replacements = {
-        "ADD_DOC_STD#": config.get("doc_number", config.get("DOC_STD", "")),
-        "ADD_STD_NAME": config.get("std_name", config.get("STD_name", "")),
-        "ADD_PLAN_NUMBER": config.get("test_plan", config.get("PLAN-number", "")),
-        "ADD_PREPARED_BY": config.get("prepared_by", config.get("Prepared_by", "")),
-        "ADD_TEST_PROTOCOL": config.get("test_plan", config.get("Test_protocol", "")),
-        "ADD_FOOTER": config.get("footer", config.get("Footer", "")),
+        WordPlaceholders.DOC_STD: config.get(ConfigKeys.DOC_STD, config.get(ConfigKeys.LEGACY_KEYS["DOC_STD"], "")),
+        WordPlaceholders.STD_NAME: config.get(ConfigKeys.STD_NAME, config.get(ConfigKeys.LEGACY_KEYS["STD_NAME"], "")),
+        WordPlaceholders.PLAN_NUMBER: config.get(ConfigKeys.TEST_PLAN, config.get(ConfigKeys.LEGACY_KEYS["PLAN_NUMBER"], "")),
+        WordPlaceholders.PREPARED_BY: config.get(ConfigKeys.PREPARED_BY, config.get(ConfigKeys.LEGACY_KEYS["PREPARED_BY"], "")),
+        WordPlaceholders.TEST_PROTOCOL: config.get(ConfigKeys.TEST_PROTOCOL, config.get(ConfigKeys.LEGACY_KEYS["TEST_PROTOCOL"], "")),
+        WordPlaceholders.FOOTER: config.get(ConfigKeys.FOOTER, config.get(ConfigKeys.LEGACY_KEYS["FOOTER"], "")),
     }
 
     # ---- Body ----

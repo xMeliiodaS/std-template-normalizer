@@ -9,6 +9,7 @@ from src.word.table_handler import (
     copy_table_rows_excluding_header_into_table_with_id
 )
 from src.word.placeholder_replacer import replace_placeholders_using_config
+from src.config.constants import DOCX_EXTENSION, APP_DATA_FOLDER_NAME, ConfigKeys, WordTableDefaults, CONFIG_FILE_NAME
 
 
 class TestProtocolNormalization(unittest.TestCase):
@@ -17,13 +18,13 @@ class TestProtocolNormalization(unittest.TestCase):
     def setUp(self):
         """Load configuration and set file paths for the test."""
         self.config = ConfigProvider.load_config_json()
-        self.exported_word = self.config["Exported_STD"]
-        self.template_ready_word = self.config["Template_protocol"]
-        self.output_word = self.config["Normalized_protocol"]
+        self.exported_word = self.config[ConfigKeys.EXPORTED_STD]
+        self.template_ready_word = self.config[ConfigKeys.TEMPLATE_PROTOCOL]
+        self.output_word = self.config[ConfigKeys.NORMALIZED_PROTOCOL]
 
         # Ensure the output file has a .docx extension
-        if not self.output_word.endswith('.docx'):
-            self.output_word += '.docx'
+        if not self.output_word.endswith(DOCX_EXTENSION):
+            self.output_word += DOCX_EXTENSION
 
     def test_document_normalization(self):
         """
@@ -54,7 +55,7 @@ class TestProtocolNormalization(unittest.TestCase):
         set_table_column_widths(
             self.output_word,
             self.output_word,
-            widths_cm=[1.67, 3.07, 10.0, 10.5, 3.25, 3.0, 3.0, 4.55]
+            widths_cm=WordTableDefaults.DEFAULT_COLUMN_WIDTHS_CM
         )
 
         # Adjust paragraph spacing in the document
@@ -68,9 +69,9 @@ if __name__ == "__main__":
     # Define appdata path for storing config
     appdata_folder = os.path.join(
         os.environ.get('APPDATA', os.path.expanduser('~\\AppData\\Roaming')),
-        "ste_tool_studio"
+        APP_DATA_FOLDER_NAME
     )
-    config_path = os.path.join(appdata_folder, "config.json")
+    config_path = os.path.join(appdata_folder, CONFIG_FILE_NAME)
 
     # Load config
     config = ConfigProvider.load_config_json(config_path)
