@@ -1,9 +1,11 @@
-import json
 import os
 from docx import Document
 
 from src.config.config_provider import ConfigProvider
 from src.config.constants import DOCX_EXTENSION, WordPlaceholders, ConfigKeys
+from src.config.logging_config import get_logger
+
+logger = get_logger(__name__)
 
 
 # doc_type from external config -> replacement values for DOC_TYPE, DOC_RECORD, DOC_TYPE_STx
@@ -70,17 +72,20 @@ def replace_text_in_table(table, replacements: dict):
 
 def replace_placeholders_using_config(docx_path, output_path=None):
     config = ConfigProvider.load_config_json()
-    
+
     # Ensure output_path has .docx extension if it doesn't
     if output_path and not output_path.endswith(DOCX_EXTENSION):
         output_path = output_path + DOCX_EXTENSION
-    
+
     # Ensure docx_path exists and has .docx extension
     if not docx_path.endswith(DOCX_EXTENSION):
         if os.path.exists(docx_path + DOCX_EXTENSION):
             docx_path = docx_path + DOCX_EXTENSION
         else:
             raise ValueError(f"Document path must be a {DOCX_EXTENSION} file: {docx_path}")
+
+    out = output_path or docx_path
+    logger.info("Replacing placeholders. Input: %s, Output: %s", docx_path, out)
 
     doc = Document(docx_path)
 
@@ -125,3 +130,4 @@ def replace_placeholders_using_config(docx_path, output_path=None):
 
     # Save document
     doc.save(output_path or docx_path)
+    logger.info("Output: Placeholders replaced successfully.")

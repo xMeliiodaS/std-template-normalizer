@@ -3,6 +3,9 @@ import json
 import shutil
 
 from src.config.constants import APP_DATA_FOLDER_NAME, CONFIG_FILE_NAME
+from src.config.logging_config import get_logger
+
+logger = get_logger(__name__)
 
 class ConfigProvider:
     """
@@ -45,14 +48,16 @@ class ConfigProvider:
                 if os.path.exists(default_config_path):
                     shutil.copy(default_config_path, path)
                 else:
-                    print(f"Default {CONFIG_FILE_NAME} not found. Creating empty config.")
+                    logger.info("Default %s not found. Creating empty config.", CONFIG_FILE_NAME)
                     with open(path, 'w', encoding='utf-8') as f:
                         json.dump({}, f)
 
         # --- Load and return JSON ---
         try:
             with open(path, 'r', encoding='utf-8') as f:
-                return json.load(f)
+                data = json.load(f)
+            logger.info("Loaded config from: %s", path)
+            return data
         except Exception as e:
-            print(f"Error reading {CONFIG_FILE_NAME}: {e}")
+            logger.exception("Error reading %s: %s", CONFIG_FILE_NAME, e)
             return {}

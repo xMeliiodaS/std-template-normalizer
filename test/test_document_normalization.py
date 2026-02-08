@@ -1,4 +1,5 @@
 import os
+import sys
 import unittest
 from src.config.config_provider import ConfigProvider
 from src.word.table_handler import (
@@ -66,6 +67,10 @@ class TestProtocolNormalization(unittest.TestCase):
 
 
 if __name__ == "__main__":
+    from src.config.logging_config import setup_logging, get_logger
+    setup_logging()
+    log = get_logger(__name__)
+
     # Define appdata path for storing config
     appdata_folder = os.path.join(
         os.environ.get('APPDATA', os.path.expanduser('~\\AppData\\Roaming')),
@@ -73,10 +78,24 @@ if __name__ == "__main__":
     )
     config_path = os.path.join(appdata_folder, CONFIG_FILE_NAME)
 
+    log.info("Started document normalization. Config path: %s", config_path)
+
     # Load config
     config = ConfigProvider.load_config_json(config_path)
+    if config:
+        exported = config.get(ConfigKeys.EXPORTED_STD, "")
+        output = config.get(ConfigKeys.NORMALIZED_PROTOCOL, "")
+        log.info("Inputs: Exported_STD=%s, Normalized_Protocol=%s", exported, output)
 
     # Create test suite and run
     suite = unittest.TestSuite()
     suite.addTest(TestProtocolNormalization('test_document_normalization'))
-    unittest.TextTestRunner(verbosity=2).run(suite)
+    result = unittest.TextTestRunner(verbosity=2).run(suite)
+
+    if result.wasSuccessful():
+        log.info("Output: Document normalization completed successfully.")
+        sys.exit(0)
+    else:
+        failures = "; ".join(str(f[1]) for f in result.failures) if result.failures else "unknown"
+        log.info("Output: Document normalization failed. %s", failures)
+        sys.exit(1)

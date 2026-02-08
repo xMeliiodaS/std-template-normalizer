@@ -145,3 +145,15 @@ class LogMessages:
     """Centralized log and debug output messages."""
 
     DEFAULT_CONFIG_CREATED = "Default config.json not found. Creating empty config."
+
+
+# ============================================================================
+# Process output markers for C# StatusText (stdout = status, use these if needed)
+# ============================================================================
+
+class ProcessMarkers:
+    """Markers for C# ProcessExecutionService progress parsing."""
+
+    PROGRESS_TOTAL = "PROGRESS_TOTAL:"
+    PROGRESS = "PROGRESS:"
+    PROCESS_FINISHED = "PROCESS_FINISHED"
