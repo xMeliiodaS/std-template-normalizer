@@ -7,10 +7,17 @@ from src.word.table_handler import (
     set_table_column_widths,
     set_tables_autofit_to_window,
     set_landscape_for_all_sections,
-    copy_table_rows_excluding_header_into_table_with_id
+    copy_table_rows_excluding_header_into_table_with_id,
 )
 from src.word.placeholder_replacer import replace_placeholders_using_config
-from src.config.constants import DOCX_EXTENSION, APP_DATA_FOLDER_NAME, ConfigKeys, WordTableDefaults, CONFIG_FILE_NAME
+from src.config.constants import (
+    DOCX_EXTENSION,
+    APP_DATA_FOLDER_NAME,
+    ConfigKeys,
+    WordTableDefaults,
+    CONFIG_FILE_NAME,
+)
+from src.validation.docx_verifier import verify_normalized_protocol
 
 
 class TestProtocolNormalization(unittest.TestCase):
@@ -64,6 +71,15 @@ class TestProtocolNormalization(unittest.TestCase):
 
         # Replace placeholders with values from config
         replace_placeholders_using_config(self.output_word, self.output_word)
+
+        # CI-grade verification of the final normalized protocol.
+        # Any deviation in content, structure, formatting, or placeholders
+        # will cause this test to fail with a precise diagnostic message.
+        verify_normalized_protocol(
+            exported_std_path=self.exported_word,
+            template_protocol_path=self.template_ready_word,
+            normalized_protocol_path=self.output_word,
+        )
 
 
 if __name__ == "__main__":
