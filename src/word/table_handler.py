@@ -5,6 +5,7 @@ from docx.shared import Cm, Pt
 from docx.table import Table
 from docx.enum.section import WD_ORIENT
 from docx.oxml.shared import OxmlElement, qn
+from src.excel.xlsx_reader import read_xlsx_rows
 
 
 def _ensure_docx_extension(path: str) -> str:
@@ -212,6 +213,64 @@ def copy_table_rows_excluding_header_into_table_with_id(
         # No empty row found → append at end
         for tr in rows_to_copy:
             target_tbl_elm.append(tr)
+
+    set_normal_style_in_second_column(target_table, skip_header=True)
+    remove_numbering_in_second_column(target_table, skip_header=True)
+
+    save_path = _ensure_docx_extension(output_path or dst_docx_path)
+    dst.save(save_path)
+
+
+def copy_excel_rows_excluding_header_into_table_with_id(
+        src_excel_path: str,
+        dst_docx_path: str,
+        output_path: str = None,
+        sheet_name: str = None,
+        expected_target_headers=None,
+):
+    """
+    Copy all rows except the header from an Excel sheet into the Word target table
+    identified by its header row (e.g., first cell is 'ID').
+    """
+    if expected_target_headers is None:
+        expected_target_headers = ["ID"]
+
+    source_rows = read_xlsx_rows(src_excel_path, sheet_name=sheet_name)
+    if len(source_rows) < 2:
+        raise ValueError("Source Excel sheet must have at least 2 rows (header + data).")
+
+    data_rows = source_rows[1:]
+
+    dst = Document(_get_docx_path(dst_docx_path))
+    target_table = _find_table_by_header(dst, expected_headers=expected_target_headers)
+
+    # Reuse first empty row if template provides one, otherwise append rows.
+    template_row = None
+    data_rows_in_target = list(target_table.rows)[1:] if len(target_table.rows) > 1 else []
+    for row in data_rows_in_target:
+        if _row_is_empty(row):
+            template_row = row
+            break
+
+    if template_row is None:
+        target_table.add_row()
+        template_row = target_table.rows[-1]
+
+    template_row_xml = template_row._tr
+    target_tbl_elm = target_table._tbl
+
+    for row_idx, source_row in enumerate(data_rows):
+        if row_idx == 0:
+            current_row = template_row
+        else:
+            cloned_tr = deepcopy(template_row_xml)
+            target_tbl_elm.append(cloned_tr)
+            current_row = target_table.rows[-1]
+
+        for col_idx, value in enumerate(source_row):
+            if col_idx >= len(current_row.cells):
+                break
+            current_row.cells[col_idx].text = value
 
     set_normal_style_in_second_column(target_table, skip_header=True)
     remove_numbering_in_second_column(target_table, skip_header=True)

@@ -7,6 +7,7 @@ from docx import Document
 from docx.enum.section import WD_ORIENT
 from docx.oxml.shared import qn
 from docx.table import Table, _Cell
+from src.excel.xlsx_reader import read_xlsx_rows
 
 from src.config.config_provider import ConfigProvider
 from src.config.constants import (
@@ -156,6 +157,14 @@ def _collect_table_matrix(table: Table, skip_header: bool) -> List[List[str]]:
     return matrix
 
 
+def _collect_excel_matrix(path: str, sheet_name: Optional[str] = None, skip_header: bool = True) -> List[List[str]]:
+    """Collect a 2D logical text matrix from an Excel worksheet."""
+    rows = read_xlsx_rows(path, sheet_name=sheet_name)
+    if skip_header and rows:
+        rows = rows[1:]
+    return [[_normalize_text(cell) for cell in row] for row in rows]
+
+
 def validate_table_content_integrity(
     exported_std_path: str,
     normalized_protocol_path: str,
@@ -172,14 +181,19 @@ def validate_table_content_integrity(
     - Each corresponding logical cell (semantic text) must match.
     - Detect merged cells and fail explicitly if present.
     """
-    exported_doc = _load_document(exported_std_path)
+    source_is_excel = exported_std_path.lower().endswith(".xlsx")
+    exported_doc = None if source_is_excel else _load_document(exported_std_path)
     normalized_doc = _load_document(normalized_protocol_path)
 
-    if not exported_doc.tables:
-        raise VerificationError("Source STD document contains no tables.")
+    if source_is_excel:
+        src_matrix = _collect_excel_matrix(exported_std_path, skip_header=True)
+    else:
+        if not exported_doc.tables:
+            raise VerificationError("Source STD document contains no tables.")
 
-    src_table = exported_doc.tables[0]
-    _assert_no_merged_cells(src_table, "source STD table[0]")
+        src_table = exported_doc.tables[0]
+        _assert_no_merged_cells(src_table, "source STD table[0]")
+        src_matrix = _collect_table_matrix(src_table, skip_header=True)
 
     if expected_target_headers is None:
         expected_target_headers = WordTableDefaults.DEFAULT_TARGET_HEADERS
@@ -192,9 +206,6 @@ def validate_table_content_integrity(
         ) from exc
 
     _assert_no_merged_cells(target_table, "normalized protocol target table")
-
-    # Build matrices
-    src_matrix = _collect_table_matrix(src_table, skip_header=True)
 
     # In the target table, ignore purely empty rows (template placeholders that were not used)
     # but preserve order.
