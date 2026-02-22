@@ -8,10 +8,12 @@ from src.word.table_handler import (
     set_tables_autofit_to_window,
     set_landscape_for_all_sections,
     copy_table_rows_excluding_header_into_table_with_id,
+    copy_excel_rows_excluding_header_into_table_with_id,
 )
 from src.word.placeholder_replacer import replace_placeholders_using_config
 from src.config.constants import (
     DOCX_EXTENSION,
+    XLSX_EXTENSION,
     APP_DATA_FOLDER_NAME,
     ConfigKeys,
     WordTableDefaults,
@@ -53,11 +55,18 @@ class TestProtocolNormalization(unittest.TestCase):
         set_tables_autofit_to_window(self.exported_word, self.output_word)
 
         # Copy rows (excluding header) into template table
-        copy_table_rows_excluding_header_into_table_with_id(
-            self.exported_word,
-            self.template_ready_word,
-            self.output_word
-        )
+        if self.exported_word.lower().endswith(XLSX_EXTENSION):
+            copy_excel_rows_excluding_header_into_table_with_id(
+                self.exported_word,
+                self.template_ready_word,
+                self.output_word,
+            )
+        else:
+            copy_table_rows_excluding_header_into_table_with_id(
+                self.exported_word,
+                self.template_ready_word,
+                self.output_word,
+            )
 
         # Adjust table column widths
         set_table_column_widths(

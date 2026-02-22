@@ -15,6 +15,7 @@ CONFIG_FILE_NAME = "config.json"
 # ============================================================================
 
 DOCX_EXTENSION = ".docx"
+XLSX_EXTENSION = ".xlsx"
 
 # ============================================================================
 # Default Configuration Keys
