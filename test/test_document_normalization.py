@@ -49,10 +49,15 @@ class TestProtocolNormalization(unittest.TestCase):
         6. Replace placeholders using configuration.
         """
         # Set landscape layout for all sections
-        set_landscape_for_all_sections(self.exported_word, self.output_word)
+        source_doc_for_layout = (
+            self.template_ready_word
+            if self.exported_word.lower().endswith(XLSX_EXTENSION)
+            else self.exported_word
+        )
+        set_landscape_for_all_sections(source_doc_for_layout, self.output_word)
 
         # Make tables autofit to window
-        set_tables_autofit_to_window(self.exported_word, self.output_word)
+        set_tables_autofit_to_window(source_doc_for_layout, self.output_word)
 
         # Copy rows (excluding header) into template table
         if self.exported_word.lower().endswith(XLSX_EXTENSION):
