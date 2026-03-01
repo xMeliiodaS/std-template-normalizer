@@ -47,6 +47,7 @@ class TestProtocolNormalization(unittest.TestCase):
         4. Set column widths for all tables.
         5. Adjust paragraph spacing.
         6. Replace placeholders using configuration.
+        7. Verify complete document integrity.
         """
         # Set landscape layout for all sections
         source_doc_for_layout = (
@@ -87,8 +88,9 @@ class TestProtocolNormalization(unittest.TestCase):
         replace_placeholders_using_config(self.output_word, self.output_word)
 
         # CI-grade verification of the final normalized protocol.
-        # Any deviation in content, structure, formatting, or placeholders
-        # will cause this test to fail with a precise diagnostic message.
+        # Any deviation in content, structure, formatting, placeholders,
+        # or template preservation will cause this test to fail with a
+        # precise diagnostic message.
         verify_normalized_protocol(
             exported_std_path=self.exported_word,
             template_protocol_path=self.template_ready_word,

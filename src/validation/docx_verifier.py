@@ -158,17 +158,106 @@ def _collect_table_matrix(table: Table, skip_header: bool) -> List[List[str]]:
 
 
 def _collect_excel_matrix(path: str, sheet_name: Optional[str] = None, skip_header: bool = True) -> List[List[str]]:
-    """Collect a 2D logical text matrix from an Excel worksheet."""
+    """
+    Collect a 2D logical text matrix from an Excel worksheet.
+    Preserves empty columns by ensuring all rows have the same length.
+    """
     rows = read_xlsx_rows(path, sheet_name=sheet_name)
-    if skip_header and rows:
-        rows = rows[1:]
-    return [[_normalize_text(cell) for cell in row] for row in rows]
+
+    if not rows:
+        return []
+
+    # Determine the maximum column count across all rows
+    # This ensures we don't lose empty columns
+    max_cols = max(len(row) for row in rows) if rows else 0
+
+    # Normalize all rows to have the same column count
+    # Fill missing cells with empty strings
+    normalized_rows = []
+    for row in rows:
+        normalized_row = list(row) + [''] * (max_cols - len(row))
+        normalized_rows.append([_normalize_text(str(cell) if cell is not None else '') for cell in normalized_row])
+
+    if skip_header and normalized_rows:
+        return normalized_rows[1:]
+
+    return normalized_rows
+
+
+def _table_matches_headers(table: Table, expected_headers: List[str]) -> bool:
+    """Check if table's first row matches expected headers."""
+    if not table.rows:
+        return False
+    header_cells = [_normalize_text(cell.text) for cell in table.rows[0].cells]
+    expected_normalized = [_normalize_text(h) for h in expected_headers]
+    return header_cells == expected_normalized
+
+
+def _get_placeholder_replacements() -> Dict[str, str]:
+    """Get all placeholder replacements from config including doc_type overrides."""
+    config = ConfigProvider.load_config_json()
+
+    replacements = {
+        WordPlaceholders.DOC_TYPE: config.get(
+            ConfigKeys.DOC_TYPE, config.get(ConfigKeys.LEGACY_KEYS["DOC_TYPE"], "")
+        ),
+        WordPlaceholders.DOC_TYPE_STx: config.get(
+            ConfigKeys.DOC_STX, config.get(ConfigKeys.LEGACY_KEYS["DOC_TYPE_STX"], "")
+        ),
+        WordPlaceholders.DOC_RECORD: config.get(
+            ConfigKeys.DOC_RECORD, config.get(ConfigKeys.LEGACY_KEYS["DOC_RECORD"], "")
+        ),
+        WordPlaceholders.DOC_STD: config.get(
+            ConfigKeys.DOC_STD, config.get(ConfigKeys.LEGACY_KEYS["DOC_STD"], "")
+        ),
+        WordPlaceholders.STD_NAME: config.get(
+            ConfigKeys.STD_NAME, config.get(ConfigKeys.LEGACY_KEYS["STD_NAME"], "")
+        ),
+        WordPlaceholders.PLAN_NUMBER: config.get(
+            ConfigKeys.TEST_PLAN, config.get(ConfigKeys.LEGACY_KEYS["PLAN_NUMBER"], "")
+        ),
+        WordPlaceholders.PREPARED_BY: config.get(
+            ConfigKeys.PREPARED_BY, config.get(ConfigKeys.LEGACY_KEYS["PREPARED_BY"], "")
+        ),
+        WordPlaceholders.TEST_PROTOCOL: config.get(
+            ConfigKeys.TEST_PROTOCOL, config.get(ConfigKeys.LEGACY_KEYS["TEST_PROTOCOL"], "")
+        ),
+        WordPlaceholders.FOOTER: config.get(
+            ConfigKeys.FOOTER, config.get(ConfigKeys.LEGACY_KEYS["FOOTER"], "")
+        ),
+    }
+
+    # Apply doc_type-based overrides
+    doc_type_from_config = config.get(ConfigKeys.DOC_TYPE) or config.get(
+        ConfigKeys.LEGACY_KEYS["DOC_TYPE"]
+    )
+    doc_type_replacements = get_doc_type_replacements(doc_type_from_config)
+    if doc_type_replacements:
+        replacements.update(doc_type_replacements)
+
+    return replacements
+
+
+def _is_valid_placeholder_replacement(template_text: str, normalized_text: str) -> bool:
+    """
+    Check if difference between template and normalized text is due to valid placeholder replacement.
+    Returns True if the normalized text matches what we'd expect after replacing all placeholders.
+    """
+    replacements = _get_placeholder_replacements()
+
+    # Try replacing all placeholders in template text
+    expected = template_text
+    for placeholder, value in replacements.items():
+        if value:
+            expected = expected.replace(placeholder, value)
+
+    return _normalize_text(expected) == _normalize_text(normalized_text)
 
 
 def validate_table_content_integrity(
-    exported_std_path: str,
-    normalized_protocol_path: str,
-    expected_target_headers: Optional[List[str]] = None,
+        exported_std_path: str,
+        normalized_protocol_path: str,
+        expected_target_headers: Optional[List[str]] = None,
 ) -> None:
     """
     PROVE that every logical data cell from the source STD exists in the output document.
@@ -245,9 +334,9 @@ def validate_table_content_integrity(
 
 
 def validate_structural_correctness(
-    normalized_protocol_path: str,
-    expected_target_headers: Optional[List[str]] = None,
-    expected_column_count: Optional[int] = None,
+        normalized_protocol_path: str,
+        expected_target_headers: Optional[List[str]] = None,
+        expected_column_count: Optional[int] = None,
 ) -> None:
     """
     Validate structural correctness of the target table:
@@ -291,9 +380,9 @@ def validate_structural_correctness(
 
 
 def validate_formatting(
-    normalized_protocol_path: str,
-    expected_column_widths_cm: Optional[List[float]] = None,
-    expected_target_headers: Optional[List[str]] = None,
+        normalized_protocol_path: str,
+        expected_column_widths_cm: Optional[List[float]] = None,
+        expected_target_headers: Optional[List[str]] = None,
 ) -> None:
     """
     Validate formatting normalization:
@@ -435,7 +524,6 @@ def validate_placeholder_replacement(normalized_protocol_path: str) -> None:
     - Replacement values exactly match configuration (including doc_type overrides).
     """
     doc = _load_document(normalized_protocol_path)
-    config = ConfigProvider.load_config_json()
 
     unresolved = detect_unresolved_placeholders(doc)
     if unresolved:
@@ -447,43 +535,7 @@ def validate_placeholder_replacement(normalized_protocol_path: str) -> None:
         )
 
     # Compute expected replacement values using the same logic as the production replacer
-    replacements = {
-        WordPlaceholders.DOC_TYPE: config.get(
-            ConfigKeys.DOC_TYPE, config.get(ConfigKeys.LEGACY_KEYS["DOC_TYPE"], "")
-        ),
-        WordPlaceholders.DOC_TYPE_STx: config.get(
-            ConfigKeys.DOC_STX, config.get(ConfigKeys.LEGACY_KEYS["DOC_TYPE_STX"], "")
-        ),
-        WordPlaceholders.DOC_RECORD: config.get(
-            ConfigKeys.DOC_RECORD, config.get(ConfigKeys.LEGACY_KEYS["DOC_RECORD"], "")
-        ),
-        WordPlaceholders.DOC_STD: config.get(
-            ConfigKeys.DOC_STD, config.get(ConfigKeys.LEGACY_KEYS["DOC_STD"], "")
-        ),
-        WordPlaceholders.STD_NAME: config.get(
-            ConfigKeys.STD_NAME, config.get(ConfigKeys.LEGACY_KEYS["STD_NAME"], "")
-        ),
-        WordPlaceholders.PLAN_NUMBER: config.get(
-            ConfigKeys.TEST_PLAN, config.get(ConfigKeys.LEGACY_KEYS["PLAN_NUMBER"], "")
-        ),
-        WordPlaceholders.PREPARED_BY: config.get(
-            ConfigKeys.PREPARED_BY, config.get(ConfigKeys.LEGACY_KEYS["PREPARED_BY"], "")
-        ),
-        WordPlaceholders.TEST_PROTOCOL: config.get(
-            ConfigKeys.TEST_PROTOCOL, config.get(ConfigKeys.LEGACY_KEYS["TEST_PROTOCOL"], "")
-        ),
-        WordPlaceholders.FOOTER: config.get(
-            ConfigKeys.FOOTER, config.get(ConfigKeys.LEGACY_KEYS["FOOTER"], "")
-        ),
-    }
-
-    # Apply doc_type-based overrides
-    doc_type_from_config = config.get(ConfigKeys.DOC_TYPE) or config.get(
-        ConfigKeys.LEGACY_KEYS["DOC_TYPE"]
-    )
-    doc_type_replacements = get_doc_type_replacements(doc_type_from_config)
-    if doc_type_replacements:
-        replacements.update(doc_type_replacements)
+    replacements = _get_placeholder_replacements()
 
     # Gather full text of the document for existence checks
     all_text_fragments: List[str] = []
@@ -502,10 +554,123 @@ def validate_placeholder_replacement(normalized_protocol_path: str) -> None:
             )
 
 
+def validate_template_preservation(
+        template_protocol_path: str,
+        normalized_protocol_path: str,
+        expected_target_headers: Optional[List[str]] = None,
+) -> None:
+    """
+    Verify that all non-target-table content from the template
+    is preserved in the normalized output.
+
+    This ensures:
+    - Table count remains the same
+    - Non-target tables are identical (allowing only placeholder replacements)
+    - Table structure (row/column counts) is preserved
+    """
+    template_doc = _load_document(template_protocol_path)
+    normalized_doc = _load_document(normalized_protocol_path)
+
+    if expected_target_headers is None:
+        expected_target_headers = WordTableDefaults.DEFAULT_TARGET_HEADERS
+
+    # Find target table indices
+    template_target_idx = None
+    for idx, table in enumerate(template_doc.tables):
+        if _table_matches_headers(table, expected_target_headers):
+            template_target_idx = idx
+            break
+
+    normalized_target_idx = None
+    for idx, table in enumerate(normalized_doc.tables):
+        if _table_matches_headers(table, expected_target_headers):
+            normalized_target_idx = idx
+            break
+
+    if template_target_idx is None:
+        raise VerificationError(
+            f"Target table with headers {expected_target_headers} not found in template."
+        )
+
+    if normalized_target_idx is None:
+        raise VerificationError(
+            f"Target table with headers {expected_target_headers} not found in normalized document."
+        )
+
+    # Verify table count (should be same)
+    if len(template_doc.tables) != len(normalized_doc.tables):
+        raise VerificationError(
+            f"Table count mismatch. Template has {len(template_doc.tables)} tables, "
+            f"normalized has {len(normalized_doc.tables)} tables."
+        )
+
+    # Verify non-target tables are identical (allowing placeholder replacements)
+    for idx, (tmpl_table, norm_table) in enumerate(zip(template_doc.tables, normalized_doc.tables)):
+        if idx == template_target_idx:
+            continue  # Skip target table (it's intentionally modified)
+
+        # Compare structure
+        if len(tmpl_table.rows) != len(norm_table.rows):
+            raise VerificationError(
+                f"Non-target table {idx} row count changed. "
+                f"Template: {len(tmpl_table.rows)}, Normalized: {len(norm_table.rows)}"
+            )
+
+        # Compare content
+        for ri, (tmpl_row, norm_row) in enumerate(zip(tmpl_table.rows, norm_table.rows)):
+            if len(tmpl_row.cells) != len(norm_row.cells):
+                raise VerificationError(
+                    f"Non-target table {idx} row {ri} column count changed. "
+                    f"Template: {len(tmpl_row.cells)}, Normalized: {len(norm_row.cells)}"
+                )
+            for ci, (tmpl_cell, norm_cell) in enumerate(zip(tmpl_row.cells, norm_row.cells)):
+                tmpl_text = _cell_logical_text(tmpl_cell)
+                norm_text = _cell_logical_text(norm_cell)
+
+                # If texts differ, check if it's a valid placeholder replacement
+                if tmpl_text != norm_text:
+                    if not _is_valid_placeholder_replacement(tmpl_text, norm_text):
+                        raise VerificationError(
+                            f"Non-target table {idx} cell (row={ri}, col={ci}) content changed unexpectedly. "
+                            f"Template: '{tmpl_text}' -> Normalized: '{norm_text}'"
+                        )
+
+
+def validate_body_paragraphs_preserved(
+        template_protocol_path: str,
+        normalized_protocol_path: str,
+) -> None:
+    """
+    Verify body paragraphs (outside tables) are preserved.
+
+    Allows only placeholder replacements as valid differences.
+    """
+    template_doc = _load_document(template_protocol_path)
+    normalized_doc = _load_document(normalized_protocol_path)
+
+    if len(template_doc.paragraphs) != len(normalized_doc.paragraphs):
+        raise VerificationError(
+            f"Body paragraph count changed. "
+            f"Template: {len(template_doc.paragraphs)}, "
+            f"Normalized: {len(normalized_doc.paragraphs)}"
+        )
+
+    for idx, (tmpl_p, norm_p) in enumerate(zip(template_doc.paragraphs, normalized_doc.paragraphs)):
+        tmpl_text = _normalize_text(tmpl_p.text)
+        norm_text = _normalize_text(norm_p.text)
+
+        if tmpl_text != norm_text:
+            if not _is_valid_placeholder_replacement(tmpl_p.text, norm_p.text):
+                raise VerificationError(
+                    f"Body paragraph {idx} changed unexpectedly. "
+                    f"Template: '{tmpl_text}' -> Normalized: '{norm_text}'"
+                )
+
+
 def verify_normalized_protocol(
-    exported_std_path: str,
-    template_protocol_path: str,
-    normalized_protocol_path: str,
+        exported_std_path: str,
+        template_protocol_path: str,
+        normalized_protocol_path: str,
 ) -> None:
     """
     High-level, reusable verification entry point for CI-grade validation.
@@ -515,6 +680,7 @@ def verify_normalized_protocol(
     - Structural correctness of the target table.
     - Formatting normalization across the document.
     - Placeholder replacement correctness.
+    - Template preservation (non-target content unchanged).
 
     Any deviation raises VerificationError with a precise, human-readable root cause.
     """
@@ -531,3 +697,14 @@ def verify_normalized_protocol(
     # 3. Placeholders
     validate_placeholder_replacement(normalized_protocol_path=normalized_protocol_path)
 
+    # 4. Template preservation - verify non-target tables remain unchanged
+    validate_template_preservation(
+        template_protocol_path=template_protocol_path,
+        normalized_protocol_path=normalized_protocol_path,
+    )
+
+    # 5. Body paragraphs preservation - verify paragraphs outside tables remain unchanged
+    validate_body_paragraphs_preserved(
+        template_protocol_path=template_protocol_path,
+        normalized_protocol_path=normalized_protocol_path,
+    )
