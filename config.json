@@ -1,7 +1,10 @@
 {
-  "Exported_word": "C:\\HW\\ID.docx",
-  "Template_word": "C:\\HW\\Template.docx",
+  "Exported_STD": "C:\\HW\\Book1.xlsx",
+  "Template_protocol": "C:\\HW\\Report Template.docx",
+
   "Output_word": "C:\\HW\\test_output.docx",
+  "Normalized_protocol": "C:\\HW\\test_output.docx",
+
   "DOC_STD": "347958724805 (STD005)",
   "STD_name": "Feather unique Functionality",
   "PLAN-number": "0685",
