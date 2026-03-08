@@ -57,16 +57,16 @@ class ConfigKeys:
 class WordPlaceholders:
     """Word document placeholder constants."""
 
-    DOC_TYPE = "ADD_DOC_TYPE"
-    DOC_TYPE_STx = "ADD_DOC_STX"
-    DOC_RECORD = "ADD_DOC_RECORD"
+    DOC_TYPE = "ADD_DOC_TYPE"           # Design or Report
+    DOC_TYPE_STx = "ADD_DOC_STX"        # STD or STR
+    DOC_RECORD = "ADD_DOC_RECORD"       # Protocol or Report
 
-    DOC_STD = "ADD_DOC_STD#"
-    STD_NAME = "ADD_STD_NAME"
-    PLAN_NUMBER = "ADD_PLAN_NUMBER"
-    PREPARED_BY = "ADD_PREPARED_BY"
-    TEST_PROTOCOL = "ADD_TEST_PROTOCOL"
-    FOOTER = "ADD_FOOTER"
+    DOC_STD = "ADD_DOC_STD#"            # DOC NUMBER (STD00X)   (Predefined by Cycle)
+    STD_NAME = "ADD_STD_NAME"           # STD Name
+    PLAN_NUMBER = "ADD_PLAN_NUMBER"     # e.g. 0685             (Predefined by Cycle)
+    PREPARED_BY = "ADD_PREPARED_BY"     # DOC Prepared By
+    TEST_PROTOCOL = "ADD_TEST_PROTOCOL" # If Applicable         (Predefined by Cycle)
+    FOOTER = "ADD_FOOTER"               # Footer                (Predefined by Cycle)
 
 # ============================================================================
 # Word Table Handling Constants
