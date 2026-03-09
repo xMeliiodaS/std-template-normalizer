@@ -185,12 +185,25 @@ def _collect_excel_matrix(path: str, sheet_name: Optional[str] = None, skip_head
 
 
 def _table_matches_headers(table: Table, expected_headers: List[str]) -> bool:
-    """Check if table's first row matches expected headers."""
+    """
+    Check if table's first-row headers match the expected header prefix.
+
+    Uses the same matching semantics as table insertion logic:
+    - Table may contain additional columns beyond expected headers.
+    - Each expected header must be contained in the corresponding table header cell.
+    """
     if not table.rows:
         return False
     header_cells = [_normalize_text(cell.text) for cell in table.rows[0].cells]
     expected_normalized = [_normalize_text(h) for h in expected_headers]
-    return header_cells == expected_normalized
+
+    if len(header_cells) < len(expected_normalized):
+        return False
+
+    return all(
+        expected_normalized[idx] in header_cells[idx]
+        for idx in range(len(expected_normalized))
+    )
 
 
 def _get_placeholder_replacements() -> Dict[str, str]:
