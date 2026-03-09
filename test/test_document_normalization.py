@@ -19,7 +19,22 @@ from src.config.constants import (
     WordTableDefaults,
     CONFIG_FILE_NAME,
 )
-from src.validation.docx_verifier import verify_normalized_protocol
+from src.validation.docx_verifier import verify_normalized_protocol, _table_matches_headers
+
+
+class _FakeCell:
+    def __init__(self, text: str):
+        self.text = text
+
+
+class _FakeRow:
+    def __init__(self, cells):
+        self.cells = [_FakeCell(c) for c in cells]
+
+
+class _FakeTable:
+    def __init__(self, rows):
+        self.rows = [_FakeRow(r) for r in rows]
 
 
 class TestProtocolNormalization(unittest.TestCase):
@@ -103,6 +118,18 @@ class TestProtocolNormalization(unittest.TestCase):
             template_protocol_path=self.template_ready_word,
             normalized_protocol_path=self.output_word,
         )
+
+    def test_target_header_matching_allows_prefix_for_wider_tables(self):
+        table = _FakeTable(rows=[["ID", "Step", "Expected result"]])
+        self.assertTrue(_table_matches_headers(table, ["ID"]))
+
+    def test_target_header_matching_allows_expected_text_contained_in_cell(self):
+        table = _FakeTable(rows=[["ID #", "Name"]])
+        self.assertTrue(_table_matches_headers(table, ["ID"]))
+
+    def test_target_header_matching_requires_position_match(self):
+        table = _FakeTable(rows=[["Name", "ID"]])
+        self.assertFalse(_table_matches_headers(table, ["ID"]))
 
 
 if __name__ == "__main__":
