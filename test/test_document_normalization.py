@@ -49,6 +49,13 @@ class TestProtocolNormalization(unittest.TestCase):
         6. Replace placeholders using configuration.
         7. Verify complete document integrity.
         """
+        required_inputs = [self.exported_word, self.template_ready_word]
+        missing_files = [p for p in required_inputs if not os.path.exists(p)]
+        if missing_files:
+            self.skipTest(
+                "Missing required input files from config.json: "
+                + ", ".join(missing_files)
+            )
         # Set landscape layout for all sections
         source_doc_for_layout = (
             self.template_ready_word

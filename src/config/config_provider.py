@@ -15,18 +15,21 @@ class ConfigProvider:
 
     @staticmethod
     def load_config_json(path=None):
-        # TO_BE_CHANGED
-        path = os.path.join(os.getcwd(), "config.json")
-        if not os.path.exists(path):
-            path = os.path.join(os.path.dirname(os.getcwd()), "config.json")
+        """
+        Load config JSON from an explicit path when provided, otherwise fall
+        back to repository-local config discovery.
+        """
+        if path is None:
+            path = os.path.join(os.getcwd(), "config.json")
+            if not os.path.exists(path):
+                path = os.path.join(os.path.dirname(os.getcwd()), "config.json")
 
         try:
             with open(path, 'r', encoding='utf-8') as f:
                 data = json.load(f)
-                print(data)  # For debugging
                 return data
         except Exception as e:
-            print(f"Error reading config.json: {e}")
+            logger.exception("Error reading %s from '%s': %s", CONFIG_FILE_NAME, path, e)
             return {}
 
         # """
