@@ -40,16 +40,19 @@ class _FakeTable:
 class TestProtocolNormalization(unittest.TestCase):
     """Unit test for normalizing Word protocols and replacing placeholders."""
 
-    def setUp(self):
-        """Load configuration and set file paths for the test."""
-        self.config = ConfigProvider.load_config_json()
-        self.exported_word = self.config[ConfigKeys.EXPORTED_STD]
-        self.template_ready_word = self.config[ConfigKeys.TEMPLATE_PROTOCOL]
-        self.output_word = self.config[ConfigKeys.NORMALIZED_PROTOCOL]
+    @staticmethod
+    def _resolve_document_paths_from_config():
+        """Load config and return normalized document paths used by integration test."""
+        config = ConfigProvider.load_config_json()
+        exported_word = config.get(ConfigKeys.EXPORTED_STD, "")
+        template_ready_word = config.get(ConfigKeys.TEMPLATE_PROTOCOL, "")
+        output_word = config.get(ConfigKeys.NORMALIZED_PROTOCOL, "")
 
         # Ensure the output file has a .docx extension
-        if not self.output_word.endswith(DOCX_EXTENSION):
-            self.output_word += DOCX_EXTENSION
+        if output_word and not output_word.endswith(DOCX_EXTENSION):
+            output_word += DOCX_EXTENSION
+
+        return exported_word, template_ready_word, output_word
 
     def test_document_normalization(self):
         """
@@ -64,59 +67,61 @@ class TestProtocolNormalization(unittest.TestCase):
         6. Replace placeholders using configuration.
         7. Verify complete document integrity.
         """
-        required_inputs = [self.exported_word, self.template_ready_word]
-        missing_files = [p for p in required_inputs if not os.path.exists(p)]
+        exported_word, template_ready_word, output_word = self._resolve_document_paths_from_config()
+
+        required_inputs = [exported_word, template_ready_word]
+        missing_files = [p for p in required_inputs if not p or not os.path.exists(p)]
         if missing_files:
             self.skipTest(
                 "Missing required input files from config.json: "
-                + ", ".join(missing_files)
+                + ", ".join(repr(p) for p in missing_files)
             )
         # Set landscape layout for all sections
         source_doc_for_layout = (
-            self.template_ready_word
-            if self.exported_word.lower().endswith(XLSX_EXTENSION)
-            else self.exported_word
+            template_ready_word
+            if exported_word.lower().endswith(XLSX_EXTENSION)
+            else exported_word
         )
-        set_landscape_for_all_sections(source_doc_for_layout, self.output_word)
+        set_landscape_for_all_sections(source_doc_for_layout, output_word)
 
         # Make tables autofit to window
-        set_tables_autofit_to_window(source_doc_for_layout, self.output_word)
+        set_tables_autofit_to_window(source_doc_for_layout, output_word)
 
         # Copy rows (excluding header) into template table
-        if self.exported_word.lower().endswith(XLSX_EXTENSION):
+        if exported_word.lower().endswith(XLSX_EXTENSION):
             copy_excel_rows_excluding_header_into_table_with_id(
-                self.exported_word,
-                self.template_ready_word,
-                self.output_word,
+                exported_word,
+                template_ready_word,
+                output_word,
             )
         else:
             copy_table_rows_excluding_header_into_table_with_id(
-                self.exported_word,
-                self.template_ready_word,
-                self.output_word,
+                exported_word,
+                template_ready_word,
+                output_word,
             )
 
         # Adjust table column widths
         set_table_column_widths(
-            self.output_word,
-            self.output_word,
+            output_word,
+            output_word,
             widths_cm=WordTableDefaults.DEFAULT_COLUMN_WIDTHS_CM
         )
 
         # Adjust paragraph spacing in the document
-        set_paragraph_spacing(self.output_word, self.output_word)
+        set_paragraph_spacing(output_word, output_word)
 
         # Replace placeholders with values from config
-        replace_placeholders_using_config(self.output_word, self.output_word)
+        replace_placeholders_using_config(output_word, output_word)
 
         # CI-grade verification of the final normalized protocol.
         # Any deviation in content, structure, formatting, placeholders,
         # or template preservation will cause this test to fail with a
         # precise diagnostic message.
         verify_normalized_protocol(
-            exported_std_path=self.exported_word,
-            template_protocol_path=self.template_ready_word,
-            normalized_protocol_path=self.output_word,
+            exported_std_path=exported_word,
+            template_protocol_path=template_ready_word,
+            normalized_protocol_path=output_word,
         )
 
     def test_target_header_matching_allows_prefix_for_wider_tables(self):
