@@ -210,6 +210,13 @@ def _get_placeholder_replacements() -> Dict[str, str]:
     """Get all placeholder replacements from config including doc_type overrides."""
     config = ConfigProvider.load_config_json()
 
+    # ADD_DOC_STD# -> "345476765 (STD034)" or "345675645 (STR002)"
+    doc_number = config.get(ConfigKeys.DOC_STD) or config.get(ConfigKeys.LEGACY_KEYS["DOC_STD"]) or ""
+    stx_number = config.get(ConfigKeys.STX_NUMBER) or config.get(ConfigKeys.LEGACY_KEYS["STX_NUMBER"]) or ""
+    doc_std_display = (
+        f"{doc_number} ({stx_number})".strip() if (doc_number and stx_number) else (doc_number or stx_number)
+    )
+
     replacements = {
         WordPlaceholders.DOC_TYPE: config.get(
             ConfigKeys.DOC_TYPE, config.get(ConfigKeys.LEGACY_KEYS["DOC_TYPE"], "")
@@ -220,9 +227,7 @@ def _get_placeholder_replacements() -> Dict[str, str]:
         WordPlaceholders.DOC_RECORD: config.get(
             ConfigKeys.DOC_RECORD, config.get(ConfigKeys.LEGACY_KEYS["DOC_RECORD"], "")
         ),
-        WordPlaceholders.DOC_STD: config.get(
-            ConfigKeys.DOC_STD, config.get(ConfigKeys.LEGACY_KEYS["DOC_STD"], "")
-        ),
+        WordPlaceholders.DOC_STD: doc_std_display,
         WordPlaceholders.STD_NAME: config.get(
             ConfigKeys.STD_NAME, config.get(ConfigKeys.LEGACY_KEYS["STD_NAME"], "")
         ),
@@ -237,6 +242,9 @@ def _get_placeholder_replacements() -> Dict[str, str]:
         ),
         WordPlaceholders.FOOTER: config.get(
             ConfigKeys.FOOTER, config.get(ConfigKeys.LEGACY_KEYS["FOOTER"], "")
+        ),
+        WordPlaceholders.STX_NUMBER: config.get(
+            ConfigKeys.STX_NUMBER, config.get(ConfigKeys.LEGACY_KEYS["STX_NUMBER"], "")
         ),
     }
 
@@ -511,6 +519,7 @@ def detect_unresolved_placeholders(doc: Document) -> Dict[str, List[str]]:
         WordPlaceholders.PREPARED_BY,
         WordPlaceholders.TEST_PROTOCOL,
         WordPlaceholders.FOOTER,
+        WordPlaceholders.STX_NUMBER,
     ]
 
     hits: Dict[str, List[str]] = {ph: [] for ph in placeholders}

@@ -37,6 +37,8 @@ class ConfigKeys:
     PREPARED_BY = "prepared_by"
     TEST_PROTOCOL = "test_plan"
     FOOTER = "footer"
+    REPORT_NUMBER = "report_number"
+    STX_NUMBER = "stx_number"
 
     LEGACY_KEYS = {
         "DOC_TYPE": "Doc_type",
@@ -48,6 +50,8 @@ class ConfigKeys:
         "PREPARED_BY": "Prepared_by",
         "TEST_PROTOCOL": "Test_protocol",
         "FOOTER": "Footer",
+        "REPORT_NUMBER": "Report_number",
+        "STX_NUMBER": "STx_number",
     }
 
 # ============================================================================
@@ -57,16 +61,17 @@ class ConfigKeys:
 class WordPlaceholders:
     """Word document placeholder constants."""
 
-    DOC_TYPE = "ADD_DOC_TYPE"           # Design or Report
-    DOC_TYPE_STx = "ADD_DOC_STX"        # STD or STR
-    DOC_RECORD = "ADD_DOC_RECORD"       # Protocol or Report
+    DOC_TYPE = "ADD_DOC_TYPE"              # Design or Report
+    DOC_TYPE_STx = "ADD_DOC_STX"           # STD or STR
+    DOC_RECORD = "ADD_DOC_RECORD"          # Protocol or Report
 
-    DOC_STD = "ADD_DOC_STD#"            # DOC NUMBER (STD00X)   (Predefined by Cycle)
-    STD_NAME = "ADD_STD_NAME"           # STD Name
-    PLAN_NUMBER = "ADD_PLAN_NUMBER"     # e.g. 0685             (Predefined by Cycle)
-    PREPARED_BY = "ADD_PREPARED_BY"     # DOC Prepared By
-    TEST_PROTOCOL = "ADD_TEST_PROTOCOL" # If Applicable         (Predefined by Cycle)
-    FOOTER = "ADD_FOOTER"               # Footer                (Predefined by Cycle)
+    DOC_STD = "ADD_DOC_STD#"               # Protocol / DOC number (STD00X)   (Predefined by Cycle)
+    STD_NAME = "ADD_STD_NAME"              # STD Name
+    PLAN_NUMBER = "ADD_PLAN_NUMBER"        # e.g. 0685             (Predefined by Cycle)
+    PREPARED_BY = "ADD_PREPARED_BY"        # DOC Prepared By
+    TEST_PROTOCOL = "ADD_TEST_PROTOCOL"    # Report number / Test protocol    (Predefined by Cycle)
+    FOOTER = "ADD_FOOTER"                  # Footer                (Predefined by Cycle)
+    STX_NUMBER = "ADD_STX_NUMBER"          # STx number, e.g. STD005 or STR014
 
 # ============================================================================
 # Word Table Handling Constants
