@@ -45,7 +45,11 @@ def get_doc_type_replacements(doc_type: str):
 
 
 def _replace_text_in_paragraph(paragraph, replacements: dict):
-    original_text = paragraph.text
+    if not paragraph.runs:
+        return
+
+    original_run_texts = [run.text for run in paragraph.runs]
+    original_text = "".join(original_run_texts)
     new_text = original_text
 
     for placeholder, value in replacements.items():
@@ -53,21 +57,17 @@ def _replace_text_in_paragraph(paragraph, replacements: dict):
             new_text = new_text.replace(placeholder, value)
 
     if new_text == original_text:
-        return  # nothing to change
+        return
 
-    # Preserve style from the first run (Word standard practice)
-    style_run = paragraph.runs[0] if paragraph.runs else None
-
-    paragraph.clear()
-    new_run = paragraph.add_run(new_text)
-
-    if style_run:
-        new_run.bold = style_run.bold
-        new_run.italic = style_run.italic
-        new_run.underline = style_run.underline
-        new_run.font.name = style_run.font.name
-        new_run.font.size = style_run.font.size
-        new_run.font.color.rgb = style_run.font.color.rgb
+    # Keep all runs and their formatting exactly as-is; only mutate text content.
+    cursor = 0
+    for idx, run in enumerate(paragraph.runs):
+        if idx < len(original_run_texts) - 1:
+            run_len = len(original_run_texts[idx])
+            run.text = new_text[cursor: cursor + run_len]
+            cursor += run_len
+        else:
+            run.text = new_text[cursor:]
 
 
 
