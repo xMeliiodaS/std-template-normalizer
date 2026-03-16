@@ -45,29 +45,22 @@ def get_doc_type_replacements(doc_type: str):
 
 
 def _replace_text_in_paragraph(paragraph, replacements: dict):
-    original_text = paragraph.text
-    new_text = original_text
+    if not paragraph.runs:
+        return
 
-    for placeholder, value in replacements.items():
-        if placeholder in new_text:
-            new_text = new_text.replace(placeholder, value)
+    # Mutate only the run text that directly contains a placeholder.
+    # This avoids reflowing text between runs and preserves line breaks,
+    # spacing, and run-level formatting outside the exact replacement span.
+    for run in paragraph.runs:
+        run_text = run.text
+        new_run_text = run_text
 
-    if new_text == original_text:
-        return  # nothing to change
+        for placeholder, value in replacements.items():
+            if placeholder in new_run_text:
+                new_run_text = new_run_text.replace(placeholder, value)
 
-    # Preserve style from the first run (Word standard practice)
-    style_run = paragraph.runs[0] if paragraph.runs else None
-
-    paragraph.clear()
-    new_run = paragraph.add_run(new_text)
-
-    if style_run:
-        new_run.bold = style_run.bold
-        new_run.italic = style_run.italic
-        new_run.underline = style_run.underline
-        new_run.font.name = style_run.font.name
-        new_run.font.size = style_run.font.size
-        new_run.font.color.rgb = style_run.font.color.rgb
+        if new_run_text != run_text:
+            run.text = new_run_text
 
 
 
