@@ -47,6 +47,19 @@ def get_doc_type_replacements(doc_type: str):
 def _replace_text_in_paragraph(paragraph, replacements: dict):
     if not paragraph.runs:
         return
+    # Mutate only the run text that directly contains a placeholder.
+    # This avoids reflowing text between runs and preserves line breaks,
+    # spacing, and run-level formatting outside the exact replacement span.
+    for run in paragraph.runs:
+        run_text = run.text
+        new_run_text = run_text
+
+        for placeholder, value in replacements.items():
+            if placeholder in new_run_text:
+                new_run_text = new_run_text.replace(placeholder, value)
+
+        if new_run_text != run_text:
+            run.text = new_run_text
 
     def _replace_token_across_runs(token: str, replacement: str):
         if not token:
@@ -106,6 +119,7 @@ def _replace_text_in_paragraph(paragraph, replacements: dict):
     # Replace placeholders individually while preserving existing run structure.
     for placeholder, value in replacements.items():
         _replace_token_across_runs(placeholder, value)
+ main
 
 
 
