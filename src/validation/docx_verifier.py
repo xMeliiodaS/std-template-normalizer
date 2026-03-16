@@ -210,42 +210,31 @@ def _get_placeholder_replacements() -> Dict[str, str]:
     """Get all placeholder replacements from config including doc_type overrides."""
     config = ConfigProvider.load_config_json()
 
-    # ADD_DOC_STD# -> "345476765 (STD034)" or "345675645 (STR002)"
-    doc_number = config.get(ConfigKeys.DOC_STD) or config.get(ConfigKeys.LEGACY_KEYS["DOC_STD"]) or ""
+    # Config key = C# field name → Word placeholder
+    protocol_number = config.get(ConfigKeys.PROTOCOL_NUMBER) or config.get(ConfigKeys.LEGACY_KEYS["DOC_STD"]) or ""
     stx_number = config.get(ConfigKeys.STX_NUMBER) or config.get(ConfigKeys.LEGACY_KEYS["STX_NUMBER"]) or ""
-    doc_std_display = (
-        f"{doc_number} ({stx_number})".strip() if (doc_number and stx_number) else (doc_number or stx_number)
+    protocol_number_display = (
+        f"{protocol_number} ({stx_number})".strip() if (protocol_number and stx_number) else (protocol_number or stx_number)
     )
+    std_name = config.get(ConfigKeys.STD_NAME) or config.get(ConfigKeys.LEGACY_KEYS["STD_NAME"]) or ""
+    report_number = config.get(ConfigKeys.REPORT_NUMBER) or config.get(ConfigKeys.LEGACY_KEYS["REPORT_NUMBER"]) or ""
+    test_plan = config.get(ConfigKeys.TEST_PLAN) or config.get(ConfigKeys.LEGACY_KEYS["PLAN_NUMBER"]) or ""
+    prepared_by = config.get(ConfigKeys.PREPARED_BY) or config.get(ConfigKeys.LEGACY_KEYS["PREPARED_BY"]) or ""
+    footer = config.get(ConfigKeys.FOOTER) or config.get(ConfigKeys.LEGACY_KEYS["FOOTER"]) or ""
 
     replacements = {
-        WordPlaceholders.DOC_TYPE: config.get(
-            ConfigKeys.DOC_TYPE, config.get(ConfigKeys.LEGACY_KEYS["DOC_TYPE"], "")
-        ),
-        WordPlaceholders.DOC_TYPE_STx: config.get(
-            ConfigKeys.DOC_STX, config.get(ConfigKeys.LEGACY_KEYS["DOC_TYPE_STX"], "")
-        ),
-        WordPlaceholders.DOC_RECORD: config.get(
-            ConfigKeys.DOC_RECORD, config.get(ConfigKeys.LEGACY_KEYS["DOC_RECORD"], "")
-        ),
-        WordPlaceholders.DOC_STD: doc_std_display,
-        WordPlaceholders.STD_NAME: config.get(
-            ConfigKeys.STD_NAME, config.get(ConfigKeys.LEGACY_KEYS["STD_NAME"], "")
-        ),
-        WordPlaceholders.PLAN_NUMBER: config.get(
-            ConfigKeys.TEST_PLAN, config.get(ConfigKeys.LEGACY_KEYS["PLAN_NUMBER"], "")
-        ),
-        WordPlaceholders.PREPARED_BY: config.get(
-            ConfigKeys.PREPARED_BY, config.get(ConfigKeys.LEGACY_KEYS["PREPARED_BY"], "")
-        ),
-        WordPlaceholders.TEST_PROTOCOL: config.get(
-            ConfigKeys.TEST_PROTOCOL, config.get(ConfigKeys.LEGACY_KEYS["TEST_PROTOCOL"], "")
-        ),
-        WordPlaceholders.FOOTER: config.get(
-            ConfigKeys.FOOTER, config.get(ConfigKeys.LEGACY_KEYS["FOOTER"], "")
-        ),
-        WordPlaceholders.STX_NUMBER: config.get(
-            ConfigKeys.STX_NUMBER, config.get(ConfigKeys.LEGACY_KEYS["STX_NUMBER"], "")
-        ),
+        WordPlaceholders.DOC_TYPE: config.get(ConfigKeys.DOC_TYPE) or config.get(ConfigKeys.LEGACY_KEYS["DOC_TYPE"]) or "",
+        WordPlaceholders.DOC_TYPE_STx: config.get(ConfigKeys.DOC_STX) or config.get(ConfigKeys.LEGACY_KEYS["DOC_TYPE_STX"]) or "",
+        WordPlaceholders.DOC_RECORD: config.get(ConfigKeys.DOC_RECORD) or config.get(ConfigKeys.LEGACY_KEYS["DOC_RECORD"]) or "",
+        WordPlaceholders.PROTOCOL_NUMBER: protocol_number_display,
+        WordPlaceholders.REPORT_NUMBER: report_number,
+        WordPlaceholders.STD_NAME: std_name,
+        WordPlaceholders.PLAN_NUMBER: test_plan,
+        WordPlaceholders.STX_NUMBER: stx_number,
+        WordPlaceholders.PREPARED_BY: prepared_by,
+        WordPlaceholders.FOOTER: footer,
+        "ADD_DOC_STD#": protocol_number_display,
+        "ADD_TEST_PROTOCOL": report_number,
     }
 
     # Apply doc_type-based overrides
@@ -513,13 +502,15 @@ def detect_unresolved_placeholders(doc: Document) -> Dict[str, List[str]]:
         WordPlaceholders.DOC_TYPE,
         WordPlaceholders.DOC_TYPE_STx,
         WordPlaceholders.DOC_RECORD,
-        WordPlaceholders.DOC_STD,
+        WordPlaceholders.PROTOCOL_NUMBER,
+        WordPlaceholders.REPORT_NUMBER,
         WordPlaceholders.STD_NAME,
         WordPlaceholders.PLAN_NUMBER,
-        WordPlaceholders.PREPARED_BY,
-        WordPlaceholders.TEST_PROTOCOL,
-        WordPlaceholders.FOOTER,
         WordPlaceholders.STX_NUMBER,
+        WordPlaceholders.PREPARED_BY,
+        WordPlaceholders.FOOTER,
+        "ADD_DOC_STD#",
+        "ADD_TEST_PROTOCOL",
     ]
 
     hits: Dict[str, List[str]] = {ph: [] for ph in placeholders}

@@ -17,7 +17,7 @@ _DOC_TYPE_REPLACEMENT_MAP = {
         # ADD_DOC_RECORD -> Protocol
         WordPlaceholders.DOC_RECORD: "Protocol",
         # ADD_DOC_STX -> STD
-        WordPlaceholders.DOC_TYPE_STx: "STD",
+        WordPlaceholders.DOC_TYPE_STx: "(STD)",
     },
     "report": {
         # Report mode
@@ -26,7 +26,7 @@ _DOC_TYPE_REPLACEMENT_MAP = {
         # ADD_DOC_RECORD -> Report
         WordPlaceholders.DOC_RECORD: "Report",
         # ADD_DOC_STX -> STR
-        WordPlaceholders.DOC_TYPE_STx: "STR",
+        WordPlaceholders.DOC_TYPE_STx: "(STR)",
     },
 }
 
@@ -97,23 +97,35 @@ def replace_placeholders_using_config(docx_path, output_path=None):
 
     doc = Document(docx_path)
 
-    # Protocol/DOC number (e.g. 345476765) and STx (e.g. STD034 or STR002)
-    doc_number = config.get(ConfigKeys.DOC_STD) or config.get(ConfigKeys.LEGACY_KEYS["DOC_STD"]) or ""
+    # Values from C# Template Normalizer (config key = field name → Word placeholder)
+    protocol_number = config.get(ConfigKeys.PROTOCOL_NUMBER) or config.get(ConfigKeys.LEGACY_KEYS["DOC_STD"]) or ""
     stx_number = config.get(ConfigKeys.STX_NUMBER) or config.get(ConfigKeys.LEGACY_KEYS["STX_NUMBER"]) or ""
-    # ADD_DOC_STD# -> "345476765 (STD034)" or "345675645 (STR002)"
-    doc_std_display = f"{doc_number} ({stx_number})".strip() if (doc_number and stx_number) else (doc_number or stx_number)
+    stx_number = f"({stx_number})"
+    protocol_number_display = f"{protocol_number}"
+    std_name = config.get(ConfigKeys.STD_NAME) or config.get(ConfigKeys.LEGACY_KEYS["STD_NAME"]) or ""
+    report_number = config.get(ConfigKeys.REPORT_NUMBER) or config.get(ConfigKeys.LEGACY_KEYS["REPORT_NUMBER"]) or ""
+    test_plan = config.get(ConfigKeys.TEST_PLAN) or config.get(ConfigKeys.LEGACY_KEYS["PLAN_NUMBER"]) or ""
+    prepared_by = config.get(ConfigKeys.PREPARED_BY) or config.get(ConfigKeys.LEGACY_KEYS["PREPARED_BY"]) or ""
+    footer = config.get(ConfigKeys.FOOTER) or config.get(ConfigKeys.LEGACY_KEYS["FOOTER"]) or ""
+
+    is_report = (config.get(ConfigKeys.DOC_TYPE) or "").strip().lower() == "report"
+
+    add_doc_std_value = report_number if is_report else protocol_number_display
 
     replacements = {
-        WordPlaceholders.DOC_TYPE: config.get(ConfigKeys.DOC_TYPE, config.get(ConfigKeys.LEGACY_KEYS["DOC_TYPE"], "")),
-        WordPlaceholders.DOC_TYPE_STx: config.get(ConfigKeys.DOC_STX, config.get(ConfigKeys.LEGACY_KEYS["DOC_TYPE_STX"], "")),
-        WordPlaceholders.DOC_RECORD: config.get(ConfigKeys.DOC_RECORD, config.get(ConfigKeys.LEGACY_KEYS["DOC_RECORD"], "")),
-        WordPlaceholders.DOC_STD: doc_std_display,
-        WordPlaceholders.STD_NAME: config.get(ConfigKeys.STD_NAME, config.get(ConfigKeys.LEGACY_KEYS["STD_NAME"], "")),
-        WordPlaceholders.PLAN_NUMBER: config.get(ConfigKeys.TEST_PLAN, config.get(ConfigKeys.LEGACY_KEYS["PLAN_NUMBER"], "")),
-        WordPlaceholders.PREPARED_BY: config.get(ConfigKeys.PREPARED_BY, config.get(ConfigKeys.LEGACY_KEYS["PREPARED_BY"], "")),
-        WordPlaceholders.TEST_PROTOCOL: config.get(ConfigKeys.TEST_PROTOCOL, config.get(ConfigKeys.LEGACY_KEYS["TEST_PROTOCOL"], "")),
-        WordPlaceholders.FOOTER: config.get(ConfigKeys.FOOTER, config.get(ConfigKeys.LEGACY_KEYS["FOOTER"], "")),
-        WordPlaceholders.STX_NUMBER: config.get(ConfigKeys.STX_NUMBER, config.get(ConfigKeys.LEGACY_KEYS["STX_NUMBER"], "")),
+        WordPlaceholders.DOC_TYPE: config.get(ConfigKeys.DOC_TYPE) or config.get(ConfigKeys.LEGACY_KEYS["DOC_TYPE"]) or "",
+        WordPlaceholders.DOC_TYPE_STx: config.get(ConfigKeys.DOC_STX) or config.get(ConfigKeys.LEGACY_KEYS["DOC_TYPE_STX"]) or "",
+        WordPlaceholders.DOC_RECORD: config.get(ConfigKeys.DOC_RECORD) or config.get(ConfigKeys.LEGACY_KEYS["DOC_RECORD"]) or "",
+        WordPlaceholders.PROTOCOL_NUMBER: protocol_number_display,
+        WordPlaceholders.REPORT_NUMBER: report_number,
+        WordPlaceholders.STD_NAME: std_name,
+        WordPlaceholders.PLAN_NUMBER: test_plan,
+        WordPlaceholders.STX_NUMBER: stx_number,
+        WordPlaceholders.PREPARED_BY: prepared_by,
+        WordPlaceholders.FOOTER: footer,
+        # Legacy placeholders (same values)
+
+        "ADD_DOC_STD#": add_doc_std_value,
     }
 
     # Override DOC_TYPE, DOC_RECORD, DOC_TYPE_STx when doc_type is "protocol" or "report"

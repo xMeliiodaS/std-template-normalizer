@@ -28,23 +28,25 @@ class ConfigKeys:
     TEMPLATE_PROTOCOL = "Template_protocol"
     NORMALIZED_PROTOCOL = "Normalized_protocol"
 
+    # Config keys = C# Template Normalizer field names. Word placeholder in comments.
     DOC_TYPE = "doc_type"
     DOC_STX = "doc_stx"
     DOC_RECORD = "doc_record"
-    DOC_STD = "doc_number"
-    STD_NAME = "std_name"
-    TEST_PLAN = "test_plan"
-    PREPARED_BY = "prepared_by"
-    TEST_PROTOCOL = "test_plan"
+    PROTOCOL_NUMBER = "protocol_number"   # → ADD_PROTOCOL_NUMBER#
+    STD_NAME = "std_name"                 # → ADD_STD_NAME
+    REPORT_NUMBER = "report_number"       # → ADD_REPORT_NUMBER
+    TEST_PLAN = "test_plan"               # → ADD_PLAN_NUMBER
+    STX_NUMBER = "stx_number"             # → ADD_STX_NUMBER
+    PREPARED_BY = "prepared_by"           # → ADD_PREPARED_BY
+    # Legacy / optional
     FOOTER = "footer"
-    REPORT_NUMBER = "report_number"
-    STX_NUMBER = "stx_number"
+    TEST_PROTOCOL = "test_plan"
 
     LEGACY_KEYS = {
         "DOC_TYPE": "Doc_type",
         "DOC_TYPE_STX": "Doc_stx",
         "DOC_RECORD": "Doc_record",
-        "DOC_STD": "DOC_STD",
+        "DOC_STD": "doc_number",          # legacy key for Protocol number
         "STD_NAME": "STD_name",
         "PLAN_NUMBER": "PLAN-number",
         "PREPARED_BY": "Prepared_by",
@@ -59,19 +61,19 @@ class ConfigKeys:
 # ============================================================================
 
 class WordPlaceholders:
-    """Word document placeholder constants."""
+    """Word placeholder tokens. Field (C#) = config key = placeholder name."""
 
-    DOC_TYPE = "ADD_DOC_TYPE"              # Design or Report
-    DOC_TYPE_STx = "ADD_DOC_STX"           # STD or STR
-    DOC_RECORD = "ADD_DOC_RECORD"          # Protocol or Report
+    DOC_TYPE = "ADD_DOC_TYPE"              # doc_type → Design / Report
+    DOC_TYPE_STx = "ADD_DOC_STX"           # doc_type → STD / STR
+    DOC_RECORD = "ADD_DOC_RECORD"          # doc_type → Protocol / Report
 
-    DOC_STD = "ADD_DOC_STD#"               # Protocol / DOC number (STD00X)   (Predefined by Cycle)
-    STD_NAME = "ADD_STD_NAME"              # STD Name
-    PLAN_NUMBER = "ADD_PLAN_NUMBER"        # e.g. 0685             (Predefined by Cycle)
-    PREPARED_BY = "ADD_PREPARED_BY"        # DOC Prepared By
-    TEST_PROTOCOL = "ADD_TEST_PROTOCOL"    # Report number / Test protocol    (Predefined by Cycle)
-    FOOTER = "ADD_FOOTER"                  # Footer                (Predefined by Cycle)
-    STX_NUMBER = "ADD_STX_NUMBER"          # STx number, e.g. STD005 or STR014
+    PROTOCOL_NUMBER = "ADD_PROTOCOL_NUMBER#"   # protocol_number
+    REPORT_NUMBER = "ADD_REPORT_NUMBER"        # report_number
+    STD_NAME = "ADD_STD_NAME"                  # std_name
+    PLAN_NUMBER = "ADD_PLAN_NUMBER"            # test_plan
+    STX_NUMBER = "ADD_STX_NUMBER"              # stx_number
+    PREPARED_BY = "ADD_PREPARED_BY"            # prepared_by
+    FOOTER = "ADD_FOOTER"                      # footer (optional)
 
 # ============================================================================
 # Word Table Handling Constants
