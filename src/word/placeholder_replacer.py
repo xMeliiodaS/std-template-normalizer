@@ -47,8 +47,6 @@ def get_doc_type_replacements(doc_type: str):
 def _replace_text_in_paragraph(paragraph, replacements: dict):
     if not paragraph.runs:
         return
-
-<<<<<<< codex/fix-text-replacement-without-formatting-changes-yurqnv
     # Mutate only the run text that directly contains a placeholder.
     # This avoids reflowing text between runs and preserves line breaks,
     # spacing, and run-level formatting outside the exact replacement span.
@@ -62,28 +60,66 @@ def _replace_text_in_paragraph(paragraph, replacements: dict):
 
         if new_run_text != run_text:
             run.text = new_run_text
-=======
-    original_run_texts = [run.text for run in paragraph.runs]
-    original_text = "".join(original_run_texts)
-    new_text = original_text
 
+    def _replace_token_across_runs(token: str, replacement: str):
+        if not token:
+            return
+
+        while True:
+            run_texts = [run.text for run in paragraph.runs]
+            full_text = "".join(run_texts)
+            start_idx = full_text.find(token)
+            if start_idx == -1:
+                return
+
+            end_idx = start_idx + len(token)
+
+            # Map absolute paragraph offsets to run index and run-local offset.
+            cumulative = 0
+            start_run_idx = start_off = end_run_idx = end_off = 0
+            start_found = end_found = False
+
+            for idx, run_text in enumerate(run_texts):
+                next_cumulative = cumulative + len(run_text)
+
+                if not start_found and start_idx < next_cumulative:
+                    start_run_idx = idx
+                    start_off = start_idx - cumulative
+                    start_found = True
+
+                if not end_found and end_idx <= next_cumulative:
+                    end_run_idx = idx
+                    end_off = end_idx - cumulative
+                    end_found = True
+                    break
+
+                cumulative = next_cumulative
+
+            if not (start_found and end_found):
+                return
+
+            if start_run_idx == end_run_idx:
+                run = paragraph.runs[start_run_idx]
+                run.text = run.text[:start_off] + replacement + run.text[end_off:]
+                continue
+
+            start_run = paragraph.runs[start_run_idx]
+            end_run = paragraph.runs[end_run_idx]
+
+            start_prefix = start_run.text[:start_off]
+            end_suffix = end_run.text[end_off:]
+
+            start_run.text = start_prefix + replacement
+
+            for mid_idx in range(start_run_idx + 1, end_run_idx):
+                paragraph.runs[mid_idx].text = ""
+
+            end_run.text = end_suffix
+
+    # Replace placeholders individually while preserving existing run structure.
     for placeholder, value in replacements.items():
-        if placeholder in new_text:
-            new_text = new_text.replace(placeholder, value)
-
-    if new_text == original_text:
-        return
-
-    # Keep all runs and their formatting exactly as-is; only mutate text content.
-    cursor = 0
-    for idx, run in enumerate(paragraph.runs):
-        if idx < len(original_run_texts) - 1:
-            run_len = len(original_run_texts[idx])
-            run.text = new_text[cursor: cursor + run_len]
-            cursor += run_len
-        else:
-            run.text = new_text[cursor:]
->>>>>>> main
+        _replace_token_across_runs(placeholder, value)
+ main
 
 
 
