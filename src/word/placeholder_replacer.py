@@ -48,6 +48,21 @@ def _replace_text_in_paragraph(paragraph, replacements: dict):
     if not paragraph.runs:
         return
 
+<<<<<<< codex/fix-text-replacement-without-formatting-changes-yurqnv
+    # Mutate only the run text that directly contains a placeholder.
+    # This avoids reflowing text between runs and preserves line breaks,
+    # spacing, and run-level formatting outside the exact replacement span.
+    for run in paragraph.runs:
+        run_text = run.text
+        new_run_text = run_text
+
+        for placeholder, value in replacements.items():
+            if placeholder in new_run_text:
+                new_run_text = new_run_text.replace(placeholder, value)
+
+        if new_run_text != run_text:
+            run.text = new_run_text
+=======
     original_run_texts = [run.text for run in paragraph.runs]
     original_text = "".join(original_run_texts)
     new_text = original_text
@@ -68,6 +83,7 @@ def _replace_text_in_paragraph(paragraph, replacements: dict):
             cursor += run_len
         else:
             run.text = new_text[cursor:]
+>>>>>>> main
 
 
 
