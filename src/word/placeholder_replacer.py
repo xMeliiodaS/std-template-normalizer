@@ -118,8 +118,7 @@ def _replace_text_in_paragraph(paragraph, replacements: dict):
 
     # Replace placeholders individually while preserving existing run structure.
     for placeholder, value in replacements.items():
-        _replace_token_across_runs(placeholder, value)
- main
+        _replace_token_across_runs(placeholder, value)z
 
 
 
