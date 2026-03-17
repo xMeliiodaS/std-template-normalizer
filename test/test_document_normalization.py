@@ -1,6 +1,8 @@
 import os
 import sys
 import unittest
+from docx import Document
+import tempfile
 from src.config.config_provider import ConfigProvider
 from src.word.table_handler import (
     set_paragraph_spacing,
@@ -123,6 +125,38 @@ class TestProtocolNormalization(unittest.TestCase):
             template_protocol_path=template_ready_word,
             normalized_protocol_path=output_word,
         )
+
+
+    def test_set_paragraph_spacing_updates_only_target_table(self):
+        doc = Document()
+        body_paragraph = doc.add_paragraph("Body paragraph")
+
+        other_table = doc.add_table(rows=1, cols=1)
+        other_table.rows[0].cells[0].text = "Other"
+
+        target_table = doc.add_table(rows=2, cols=2)
+        target_table.rows[0].cells[0].text = "ID"
+        target_table.rows[0].cells[1].text = "Description"
+        target_table.rows[1].cells[0].text = "1"
+        target_table.rows[1].cells[1].text = "Target row"
+
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            path = os.path.join(tmp_dir, "spacing.docx")
+            doc.save(path)
+
+            set_paragraph_spacing(path, path)
+
+            updated = Document(path)
+            self.assertIsNone(updated.paragraphs[0].paragraph_format.space_before)
+            self.assertIsNone(updated.paragraphs[0].paragraph_format.space_after)
+
+            untouched_table_paragraph = updated.tables[0].rows[0].cells[0].paragraphs[0].paragraph_format
+            self.assertIsNone(untouched_table_paragraph.space_before)
+            self.assertIsNone(untouched_table_paragraph.space_after)
+
+            target_paragraph = updated.tables[1].rows[1].cells[1].paragraphs[0].paragraph_format
+            self.assertAlmostEqual(target_paragraph.space_before.pt, WordTableDefaults.DEFAULT_PARAGRAPH_SPACING_BEFORE_PT)
+            self.assertAlmostEqual(target_paragraph.space_after.pt, WordTableDefaults.DEFAULT_PARAGRAPH_SPACING_AFTER_PT)
 
     def test_target_header_matching_allows_prefix_for_wider_tables(self):
         table = _FakeTable(rows=[["ID", "Step", "Expected result"]])
