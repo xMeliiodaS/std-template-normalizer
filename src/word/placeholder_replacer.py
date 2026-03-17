@@ -1,12 +1,12 @@
 import os
 from docx import Document
-
+from docx.table import Table
 from src.config.config_provider import ConfigProvider
 from src.config.constants import DOCX_EXTENSION, WordPlaceholders, ConfigKeys
 from src.config.logging_config import get_logger
+import re
 
 logger = get_logger(__name__)
-
 
 # doc_type from external config -> replacement values for DOC_TYPE, DOC_RECORD, DOC_TYPE_STx
 _DOC_TYPE_REPLACEMENT_MAP = {
@@ -121,12 +121,24 @@ def _replace_text_in_paragraph(paragraph, replacements: dict):
         _replace_token_across_runs(placeholder, value)
 
 
-
 def replace_text_in_table(table, replacements: dict):
     for row in table.rows:
         for cell in row.cells:
             for paragraph in cell.paragraphs:
                 _replace_text_in_paragraph(paragraph, replacements)
+
+
+def delete_rows_with_marker(table, marker: str):
+    rows_to_delete = []
+
+    for row in table.rows:
+        row_text = " ".join(cell.text for cell in row.cells)
+        if marker in row_text:
+            rows_to_delete.append(row)
+
+    for row in rows_to_delete:
+        tbl = row._element.getparent()
+        tbl.remove(row._element)
 
 
 def replace_placeholders_using_config(docx_path, output_path=None):
@@ -164,9 +176,12 @@ def replace_placeholders_using_config(docx_path, output_path=None):
     add_doc_std_value = report_number if is_report else protocol_number_display
 
     replacements = {
-        WordPlaceholders.DOC_TYPE: config.get(ConfigKeys.DOC_TYPE) or config.get(ConfigKeys.LEGACY_KEYS["DOC_TYPE"]) or "",
-        WordPlaceholders.DOC_TYPE_STx: config.get(ConfigKeys.DOC_STX) or config.get(ConfigKeys.LEGACY_KEYS["DOC_TYPE_STX"]) or "",
-        WordPlaceholders.DOC_RECORD: config.get(ConfigKeys.DOC_RECORD) or config.get(ConfigKeys.LEGACY_KEYS["DOC_RECORD"]) or "",
+        WordPlaceholders.DOC_TYPE: config.get(ConfigKeys.DOC_TYPE) or config.get(
+            ConfigKeys.LEGACY_KEYS["DOC_TYPE"]) or "",
+        WordPlaceholders.DOC_TYPE_STx: config.get(ConfigKeys.DOC_STX) or config.get(
+            ConfigKeys.LEGACY_KEYS["DOC_TYPE_STX"]) or "",
+        WordPlaceholders.DOC_RECORD: config.get(ConfigKeys.DOC_RECORD) or config.get(
+            ConfigKeys.LEGACY_KEYS["DOC_RECORD"]) or "",
         WordPlaceholders.PROTOCOL_NUMBER: protocol_number_display,
         WordPlaceholders.REPORT_NUMBER: report_number,
         WordPlaceholders.STD_NAME: std_name,
@@ -190,6 +205,9 @@ def replace_placeholders_using_config(docx_path, output_path=None):
         _replace_text_in_paragraph(paragraph, replacements)
 
     for table in doc.tables:
+        if not is_report:
+            delete_rows_with_marker(table, "TO_BE_DELETED_ROW")
+
         replace_text_in_table(table, replacements)
 
     # ---- Headers & Footers ----
@@ -205,6 +223,9 @@ def replace_placeholders_using_config(docx_path, output_path=None):
 
         for table in section.footer.tables:
             replace_text_in_table(table, replacements)
+
+        for table in doc.tables:
+            replace_text_in_table(table, {"TO_BE_DELETED_ROW": ""})
 
     # Save document
     doc.save(output_path or docx_path)

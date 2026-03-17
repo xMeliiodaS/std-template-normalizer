@@ -1,5 +1,6 @@
 from copy import deepcopy
 import os
+import re
 from docx import Document
 from docx.shared import Cm, Pt
 from docx.table import Table
@@ -458,31 +459,44 @@ def set_table_column_widths(
 
 def set_paragraph_spacing(docx_path: str, output_path: str = None, space_before_pt: float = 0, space_after_pt: float = 3):
     """
-    Set paragraph spacing for all paragraphs in a Word document.
-    Sets "Before" spacing to 0 pt and "After" spacing to 3 pt by default.
-
-    Args:
-        docx_path: Path to input .docx file
-        output_path: Path to save the modified document. Overwrites docx_path if None.
-        space_before_pt: Spacing before paragraph in points (default: 0)
-        space_after_pt: Spacing after paragraph in points (default: 3)
+    Set paragraph spacing ONLY for the table that follows the Section 6 heading.
+    All other paragraphs and tables are left completely untouched.
     """
     doc = Document(_get_docx_path(docx_path))
-    
-    # Set spacing for all paragraphs in the document body
-    for paragraph in doc.paragraphs:
-        paragraph_format = paragraph.paragraph_format
-        paragraph_format.space_before = Pt(space_before_pt)
-        paragraph_format.space_after = Pt(space_after_pt)
-    
-    # Also set spacing for paragraphs in tables
-    for table in doc.tables:
-        for row in table.rows:
-            for cell in row.cells:
-                for paragraph in cell.paragraphs:
-                    paragraph_format = paragraph.paragraph_format
-                    paragraph_format.space_before = Pt(space_before_pt)
-                    paragraph_format.space_after = Pt(space_after_pt)
-    
+
+    # Collect all block-level elements (paragraphs and tables) in body order
+    body = doc.element.body
+    children = list(body)
+
+    # Find the index of the Section 6 heading paragraph
+    section6_idx = None
+    for i, child in enumerate(children):
+        if child.tag.endswith('}p'):  # it's a paragraph
+            text = ''.join(node.text or '' for node in child.iter() if node.tag.endswith('}t'))
+            if re.search(r'^\s*6[.\)\-]?\s', text) or 'section 6' in text.lower():
+                section6_idx = i
+                break
+
+    if section6_idx is None:
+        return
+
+    # Find the first table that appears after the Section 6 heading
+    target_table = None
+    for child in children[section6_idx + 1:]:
+        if child.tag.endswith('}tbl'):
+            # Wrap the raw element as a python-docx Table object
+            target_table = Table(child, doc)
+            break
+
+    if target_table is None:
+        return
+
+    # Apply spacing only to paragraphs inside the target table
+    for row in target_table.rows:
+        for cell in row.cells:
+            for paragraph in cell.paragraphs:
+                paragraph.paragraph_format.space_before = Pt(space_before_pt)
+                paragraph.paragraph_format.space_after = Pt(space_after_pt)
+
     save_path = _ensure_docx_extension(output_path or docx_path)
     doc.save(save_path)
