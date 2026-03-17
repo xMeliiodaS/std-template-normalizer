@@ -399,7 +399,7 @@ def validate_formatting(
     - All sections are landscape.
     - All tables are set to AutoFit to Window (tblW type=pct, w=5000).
     - Target table has fixed column widths matching the configuration.
-    - Paragraph spacing (before, after) is Normalized (0pt before, 3pt after).
+    - Paragraph spacing (before, after) is normalized in the target table (0pt before, 3pt after).
     - Second column paragraphs:
         * Have 'Normal' style.
         * Have no numbering (w:numPr / w:outlineLvl).
@@ -439,7 +439,7 @@ def validate_formatting(
             f"{len(target_table.rows[0].cells)} vs {len(expected_column_widths_cm)}."
         )
 
-    # Validate paragraph spacing across the entire document
+    # Validate paragraph spacing only for the target table.
     expected_before = Pt(WordTableDefaults.DEFAULT_PARAGRAPH_SPACING_BEFORE_PT)
     expected_after = Pt(WordTableDefaults.DEFAULT_PARAGRAPH_SPACING_AFTER_PT)
 
@@ -455,16 +455,10 @@ def validate_formatting(
                 f"got before={before}pt, after={after}pt."
             )
 
-    # Body paragraphs
-    for idx, p in enumerate(doc.paragraphs):
-        _check_spacing(p, f"body paragraph {idx}")
-
-    # Table paragraphs
-    for ti, table in enumerate(doc.tables):
-        for ri, row in enumerate(table.rows):
-            for ci, cell in enumerate(row.cells):
-                for pi, p in enumerate(cell.paragraphs):
-                    _check_spacing(p, f"table {ti} row {ri} col {ci} paragraph {pi}")
+    for ri, row in enumerate(target_table.rows):
+        for ci, cell in enumerate(row.cells):
+            for pi, p in enumerate(cell.paragraphs):
+                _check_spacing(p, f"target table row {ri} col {ci} paragraph {pi}")
 
     # ---- Second column formatting in the target table ----
     for ri, row in enumerate(target_table.rows[1:], start=1):  # skip header

@@ -5,6 +5,7 @@ from docx.shared import Cm, Pt
 from docx.table import Table
 from docx.enum.section import WD_ORIENT
 from docx.oxml.shared import OxmlElement, qn
+from src.config.constants import WordTableDefaults
 from src.excel.xlsx_reader import read_xlsx_rows
 
 
@@ -456,9 +457,15 @@ def set_table_column_widths(
     doc.save(save_path)
 
 
-def set_paragraph_spacing(docx_path: str, output_path: str = None, space_before_pt: float = 0, space_after_pt: float = 3):
+def set_paragraph_spacing(
+        docx_path: str,
+        output_path: str = None,
+        space_before_pt: float = 0,
+        space_after_pt: float = 3,
+        expected_target_headers: list[str] = None,
+):
     """
-    Set paragraph spacing for all paragraphs in a Word document.
+    Set paragraph spacing only for paragraphs in the target table (Section 6).
     Sets "Before" spacing to 0 pt and "After" spacing to 3 pt by default.
 
     Args:
@@ -466,23 +473,20 @@ def set_paragraph_spacing(docx_path: str, output_path: str = None, space_before_
         output_path: Path to save the modified document. Overwrites docx_path if None.
         space_before_pt: Spacing before paragraph in points (default: 0)
         space_after_pt: Spacing after paragraph in points (default: 3)
+        expected_target_headers: Header labels used to identify the target table.
     """
+    if expected_target_headers is None:
+        expected_target_headers = WordTableDefaults.DEFAULT_TARGET_HEADERS
+
     doc = Document(_get_docx_path(docx_path))
-    
-    # Set spacing for all paragraphs in the document body
-    for paragraph in doc.paragraphs:
-        paragraph_format = paragraph.paragraph_format
-        paragraph_format.space_before = Pt(space_before_pt)
-        paragraph_format.space_after = Pt(space_after_pt)
-    
-    # Also set spacing for paragraphs in tables
-    for table in doc.tables:
-        for row in table.rows:
-            for cell in row.cells:
-                for paragraph in cell.paragraphs:
-                    paragraph_format = paragraph.paragraph_format
-                    paragraph_format.space_before = Pt(space_before_pt)
-                    paragraph_format.space_after = Pt(space_after_pt)
-    
+
+    target_table = _find_table_by_header(doc, expected_headers=expected_target_headers)
+    for row in target_table.rows:
+        for cell in row.cells:
+            for paragraph in cell.paragraphs:
+                paragraph_format = paragraph.paragraph_format
+                paragraph_format.space_before = Pt(space_before_pt)
+                paragraph_format.space_after = Pt(space_after_pt)
+
     save_path = _ensure_docx_extension(output_path or docx_path)
     doc.save(save_path)
