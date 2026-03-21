@@ -463,6 +463,30 @@ def set_paragraph_spacing(docx_path: str, output_path: str = None, space_before_
     All other paragraphs and tables are left completely untouched.
     """
     doc = Document(_get_docx_path(docx_path))
+    target_table = _find_first_table_after_section6_heading(doc)
+
+    if target_table is None:
+        return
+
+    # Apply spacing only to paragraphs inside the target table
+    for row in target_table.rows:
+        for cell in row.cells:
+            for paragraph in cell.paragraphs:
+                paragraph.paragraph_format.space_before = Pt(space_before_pt)
+                paragraph.paragraph_format.space_after = Pt(space_after_pt)
+
+    save_path = _ensure_docx_extension(output_path or docx_path)
+    doc.save(save_path)
+
+
+def _find_first_table_after_section6_heading(doc: Document) -> Table | None:
+    """
+    Locate the first body table that appears after the Section 6 heading.
+
+    Returns:
+        Table: matching table wrapper if found.
+        None: if no Section 6 heading or no subsequent table exists.
+    """
 
     # Collect all block-level elements (paragraphs and tables) in body order
     body = doc.element.body
@@ -478,25 +502,12 @@ def set_paragraph_spacing(docx_path: str, output_path: str = None, space_before_
                 break
 
     if section6_idx is None:
-        return
+        return None
 
     # Find the first table that appears after the Section 6 heading
-    target_table = None
     for child in children[section6_idx + 1:]:
         if child.tag.endswith('}tbl'):
             # Wrap the raw element as a python-docx Table object
-            target_table = Table(child, doc)
-            break
+            return Table(child, doc)
 
-    if target_table is None:
-        return
-
-    # Apply spacing only to paragraphs inside the target table
-    for row in target_table.rows:
-        for cell in row.cells:
-            for paragraph in cell.paragraphs:
-                paragraph.paragraph_format.space_before = Pt(space_before_pt)
-                paragraph.paragraph_format.space_after = Pt(space_after_pt)
-
-    save_path = _ensure_docx_extension(output_path or docx_path)
-    doc.save(save_path)
+    return None

@@ -18,7 +18,12 @@ from src.config.constants import (
     ConfigKeys,
 )
 from src.word.placeholder_replacer import get_doc_type_replacements
-from src.word.table_handler import _get_docx_path, _find_table_by_header, _row_is_empty
+from src.word.table_handler import (
+    _get_docx_path,
+    _find_table_by_header,
+    _row_is_empty,
+    _find_first_table_after_section6_heading,
+)
 
 
 class VerificationError(AssertionError):
@@ -393,13 +398,16 @@ def validate_formatting(
         normalized_protocol_path: str,
         expected_column_widths_cm: Optional[List[float]] = None,
         expected_target_headers: Optional[List[str]] = None,
+        strict_spacing: bool = False,
 ) -> None:
     """
     Validate formatting normalization:
     - All sections are landscape.
     - All tables are set to AutoFit to Window (tblW type=pct, w=5000).
     - Target table has fixed column widths matching the configuration.
-    - Paragraph spacing (before, after) is Normalized (0pt before, 3pt after).
+    - Paragraph spacing (before, after) is normalized in the same Section 6 table region
+      touched by set_paragraph_spacing.
+    - Optional strict mode can additionally enforce full-document spacing checks.
     - Second column paragraphs:
         * Have 'Normal' style.
         * Have no numbering (w:numPr / w:outlineLvl).
@@ -439,7 +447,7 @@ def validate_formatting(
             f"{len(target_table.rows[0].cells)} vs {len(expected_column_widths_cm)}."
         )
 
-    # Validate paragraph spacing across the entire document
+    # Validate paragraph spacing in the same table region modified by set_paragraph_spacing
     expected_before = Pt(WordTableDefaults.DEFAULT_PARAGRAPH_SPACING_BEFORE_PT)
     expected_after = Pt(WordTableDefaults.DEFAULT_PARAGRAPH_SPACING_AFTER_PT)
 
@@ -455,16 +463,26 @@ def validate_formatting(
                 f"got before={before}pt, after={after}pt."
             )
 
-    # Body paragraphs
-    for idx, p in enumerate(doc.paragraphs):
-        _check_spacing(p, f"body paragraph {idx}")
-
-    # Table paragraphs
-    for ti, table in enumerate(doc.tables):
-        for ri, row in enumerate(table.rows):
+    section6_table = _find_first_table_after_section6_heading(doc)
+    if section6_table is not None:
+        for ri, row in enumerate(section6_table.rows):
             for ci, cell in enumerate(row.cells):
                 for pi, p in enumerate(cell.paragraphs):
-                    _check_spacing(p, f"table {ti} row {ri} col {ci} paragraph {pi}")
+                    _check_spacing(
+                        p,
+                        f"section6 table row {ri} col {ci} paragraph {pi}",
+                    )
+
+    if strict_spacing:
+        # Optional full-document strictness for legacy or exhaustive checks.
+        for idx, p in enumerate(doc.paragraphs):
+            _check_spacing(p, f"body paragraph {idx}")
+
+        for ti, table in enumerate(doc.tables):
+            for ri, row in enumerate(table.rows):
+                for ci, cell in enumerate(row.cells):
+                    for pi, p in enumerate(cell.paragraphs):
+                        _check_spacing(p, f"table {ti} row {ri} col {ci} paragraph {pi}")
 
     # ---- Second column formatting in the target table ----
     for ri, row in enumerate(target_table.rows[1:], start=1):  # skip header
