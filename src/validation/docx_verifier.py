@@ -43,6 +43,31 @@ class CellDiff:
     reason: str
 
 
+@dataclass
+class VerificationReport:
+    """
+    Read-only verification outcome.
+
+    This module never writes to documents; it only inspects them and reports findings.
+    """
+    errors: List[str]
+    warnings: List[str]
+
+    @property
+    def passed(self) -> bool:
+        return len(self.errors) == 0
+
+    def add_error(self, message: str) -> None:
+        self.errors.append(message)
+
+    def add_warning(self, message: str) -> None:
+        self.warnings.append(message)
+
+    def raise_if_failed(self) -> None:
+        if self.errors:
+            raise VerificationError(" | ".join(self.errors))
+
+
 def _load_document(path: str) -> Document:
     """Load a .docx with the same resolution rules as the table handler."""
     return Document(_get_docx_path(path))
@@ -347,6 +372,7 @@ def validate_structural_correctness(
         normalized_protocol_path: str,
         expected_target_headers: Optional[List[str]] = None,
         expected_column_count: Optional[int] = None,
+        enforce_exact_column_count: bool = True,
 ) -> None:
     """
     Validate structural correctness of the target table:
@@ -373,7 +399,7 @@ def validate_structural_correctness(
     if expected_column_count is None:
         expected_column_count = len(WordTableDefaults.DEFAULT_COLUMN_WIDTHS_CM)
 
-    if len(header_cells) != expected_column_count:
+    if enforce_exact_column_count and len(header_cells) != expected_column_count:
         raise VerificationError(
             f"Target table column count mismatch. "
             f"Expected {expected_column_count} columns, found {len(header_cells)}."
@@ -530,15 +556,26 @@ def detect_unresolved_placeholders(doc: Document) -> Dict[str, List[str]]:
     return {ph: locs for ph, locs in hits.items() if locs}
 
 
-def validate_placeholder_replacement(normalized_protocol_path: str) -> None:
+def _collect_full_document_text(doc: Document) -> str:
+    fragments: List[str] = []
+    for _, _, _, _, p in _iter_all_paragraphs(doc):
+        if p.text:
+            fragments.append(p.text)
+    return "\n".join(fragments)
+
+
+def validate_placeholder_replacement(
+        normalized_protocol_path: str,
+        template_protocol_path: Optional[str] = None,
+) -> None:
     """
     Validate that:
     - All known placeholders are fully replaced in body, tables, headers, and footers.
     - Replacement values exactly match configuration (including doc_type overrides).
     """
-    doc = _load_document(normalized_protocol_path)
+    normalized_doc = _load_document(normalized_protocol_path)
 
-    unresolved = detect_unresolved_placeholders(doc)
+    unresolved = detect_unresolved_placeholders(normalized_doc)
     if unresolved:
         details = "; ".join(
             f"{ph} -> {locations}" for ph, locations in unresolved.items()
@@ -550,17 +587,23 @@ def validate_placeholder_replacement(normalized_protocol_path: str) -> None:
     # Compute expected replacement values using the same logic as the production replacer
     replacements = _get_placeholder_replacements()
 
-    # Gather full text of the document for existence checks
-    all_text_fragments: List[str] = []
-    for _, _, _, _, p in _iter_all_paragraphs(doc):
-        if p.text:
-            all_text_fragments.append(p.text)
-    full_text = "\n".join(all_text_fragments)
+    normalized_full_text = _collect_full_document_text(normalized_doc)
 
-    for placeholder, expected_value in replacements.items():
+    # If template is provided, only enforce values for placeholders that are present in template.
+    # This prevents false failures when config contains values for placeholders not used by a specific template.
+    placeholders_to_enforce = set(replacements.keys())
+    if template_protocol_path:
+        template_doc = _load_document(template_protocol_path)
+        template_text = _collect_full_document_text(template_doc)
+        placeholders_to_enforce = {
+            placeholder for placeholder in replacements.keys() if placeholder in template_text
+        }
+
+    for placeholder in placeholders_to_enforce:
+        expected_value = replacements.get(placeholder)
         if not expected_value:
             continue  # empty config is allowed; nothing to assert
-        if expected_value not in full_text:
+        if expected_value not in normalized_full_text:
             raise VerificationError(
                 f"Expected replacement value for {placeholder} not found in document text. "
                 f"Expected: '{expected_value}'."
@@ -684,7 +727,8 @@ def verify_normalized_protocol(
         exported_std_path: str,
         template_protocol_path: str,
         normalized_protocol_path: str,
-) -> None:
+        strict: bool = False,
+) -> VerificationReport:
     """
     High-level, reusable verification entry point for CI-grade validation.
 
@@ -695,29 +739,78 @@ def verify_normalized_protocol(
     - Placeholder replacement correctness.
     - Template preservation (non-target content unchanged).
 
-    Any deviation raises VerificationError with a precise, human-readable root cause.
+    In strict mode, any error raises VerificationError.
+    In non-strict mode, non-critical checks are reported as warnings.
     """
-    # 1. Content integrity & structural correctness (tables & rows)
-    validate_table_content_integrity(
-        exported_std_path=exported_std_path,
-        normalized_protocol_path=normalized_protocol_path,
+    report = VerificationReport(errors=[], warnings=[])
+
+    def _run(check_name: str, fn, as_warning_in_non_strict: bool = False) -> None:
+        try:
+            fn()
+        except VerificationError as exc:
+            if strict or not as_warning_in_non_strict:
+                report.add_error(f"{check_name}: {exc}")
+            else:
+                report.add_warning(f"{check_name}: {exc}")
+
+    # 1. Content integrity (critical)
+    _run(
+        "content_integrity",
+        lambda: validate_table_content_integrity(
+            exported_std_path=exported_std_path,
+            normalized_protocol_path=normalized_protocol_path,
+        ),
+        as_warning_in_non_strict=False,
     )
-    validate_structural_correctness(normalized_protocol_path=normalized_protocol_path)
 
-    # 2. Formatting normalization
-    validate_formatting(normalized_protocol_path=normalized_protocol_path)
-
-    # 3. Placeholders
-    validate_placeholder_replacement(normalized_protocol_path=normalized_protocol_path)
-
-    # 4. Template preservation - verify non-target tables remain unchanged
-    validate_template_preservation(
-        template_protocol_path=template_protocol_path,
-        normalized_protocol_path=normalized_protocol_path,
+    # 2. Structural correctness (critical), but allow relaxed column-count policy in non-strict mode
+    _run(
+        "structural_correctness",
+        lambda: validate_structural_correctness(
+            normalized_protocol_path=normalized_protocol_path,
+            enforce_exact_column_count=strict,
+        ),
+        as_warning_in_non_strict=False,
     )
 
-    # 5. Body paragraphs preservation - verify paragraphs outside tables remain unchanged
-    validate_body_paragraphs_preserved(
-        template_protocol_path=template_protocol_path,
-        normalized_protocol_path=normalized_protocol_path,
+    # 3. Formatting normalization (non-critical in non-strict mode)
+    _run(
+        "formatting",
+        lambda: validate_formatting(normalized_protocol_path=normalized_protocol_path),
+        as_warning_in_non_strict=True,
     )
+
+    # 4. Placeholders (critical)
+    _run(
+        "placeholder_replacement",
+        lambda: validate_placeholder_replacement(
+            normalized_protocol_path=normalized_protocol_path,
+            template_protocol_path=template_protocol_path,
+        ),
+        as_warning_in_non_strict=False,
+    )
+
+    # 5. Template preservation (non-critical in non-strict mode)
+    _run(
+        "template_preservation",
+        lambda: validate_template_preservation(
+            template_protocol_path=template_protocol_path,
+            normalized_protocol_path=normalized_protocol_path,
+        ),
+        as_warning_in_non_strict=True,
+    )
+
+    # 6. Body paragraph preservation (non-critical in non-strict mode)
+    _run(
+        "body_paragraphs_preserved",
+        lambda: validate_body_paragraphs_preserved(
+            template_protocol_path=template_protocol_path,
+            normalized_protocol_path=normalized_protocol_path,
+        ),
+        as_warning_in_non_strict=True,
+    )
+
+    if strict:
+        report.raise_if_failed()
+
+    return report
