@@ -47,6 +47,7 @@ class TestProtocolNormalization(unittest.TestCase):
         exported_word = config.get(ConfigKeys.EXPORTED_STD, "")
         template_ready_word = config.get(ConfigKeys.TEMPLATE_PROTOCOL, "")
         output_word = config.get(ConfigKeys.NORMALIZED_PROTOCOL, "")
+        output_word += config.get("stx_number") + config.get("std_name") + '.docx'
 
         # Ensure the output file has a .docx extension
         if output_word and not output_word.endswith(DOCX_EXTENSION):
