@@ -35,16 +35,19 @@ def setup_logging(level=logging.DEBUG):
         return root
 
     root.setLevel(level)
-    fmt = logging.Formatter(
-        "[%(asctime)s] %(levelname)-8s [%(name)s] %(message)s",
+    file_fmt = logging.Formatter(
+        "%(asctime)s.%(msecs)03d | %(levelname)-8s | %(name)s:%(lineno)d | %(message)s",
         datefmt="%Y-%m-%d %H:%M:%S",
+    )
+    console_fmt = logging.Formatter(
+        "%(levelname)-8s %(name)s:%(lineno)d - %(message)s"
     )
 
     try:
         file_path = _ensure_log_dir()
         fh = logging.FileHandler(file_path, encoding="utf-8", mode="a")
         fh.setLevel(level)
-        fh.setFormatter(fmt)
+        fh.setFormatter(file_fmt)
         root.addHandler(fh)
     except Exception as e:
         # Fallback: log to stderr only
@@ -52,7 +55,7 @@ def setup_logging(level=logging.DEBUG):
 
     ch = logging.StreamHandler(sys.stderr)
     ch.setLevel(level)
-    ch.setFormatter(fmt)
+    ch.setFormatter(console_fmt)
     root.addHandler(ch)
 
     return root
