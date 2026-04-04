@@ -1,6 +1,8 @@
 import os
 import sys
 import unittest
+from pathlib import Path
+
 from src.config.config_provider import ConfigProvider
 from src.word.table_handler import (
     set_paragraph_spacing,
@@ -44,14 +46,25 @@ class TestProtocolNormalization(unittest.TestCase):
     def _resolve_document_paths_from_config():
         """Load config and return normalized document paths used by integration test."""
         config = ConfigProvider.load_config_json()
+
         exported_word = config.get(ConfigKeys.EXPORTED_STD, "")
         template_ready_word = config.get(ConfigKeys.TEMPLATE_PROTOCOL, "")
-        output_word = config.get(ConfigKeys.NORMALIZED_PROTOCOL, "")
-        output_word += config.get("stx_number") + " " + config.get("std_name") + '.docx'
 
-        # Ensure the output file has a .docx extension
-        if output_word and not output_word.endswith(DOCX_EXTENSION):
-            output_word += DOCX_EXTENSION
+        # Build file name only (NO path from config)
+        file_name = (
+                config.get("stx_number", "") + " " +
+                config.get("std_name", "")
+        ).strip()
+
+        # Ensure extension
+        if not file_name.endswith(DOCX_EXTENSION):
+            file_name += DOCX_EXTENSION
+
+        # Resolve Desktop dynamically (user-safe, no admin needed)
+        desktop_path = Path.home() / "Desktop"
+
+        # Final output path
+        output_word = str(desktop_path / file_name)
 
         return exported_word, template_ready_word, output_word
 
@@ -124,6 +137,9 @@ class TestProtocolNormalization(unittest.TestCase):
             template_protocol_path=template_ready_word,
             normalized_protocol_path=output_word,
         )
+
+        # Open file
+        os.startfile(output_word)
 
     def test_target_header_matching_allows_prefix_for_wider_tables(self):
         table = _FakeTable(rows=[["ID", "Step", "Expected result"]])
