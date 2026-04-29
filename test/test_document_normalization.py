@@ -51,20 +51,12 @@ class TestProtocolNormalization(unittest.TestCase):
         template_ready_word = config.get(ConfigKeys.TEMPLATE_PROTOCOL, "")
 
         # Build file name only (NO path from config)
-        file_name = (
-                config.get("stx_number", "") + " " +
-                config.get("std_name", "")
-        ).strip()
+        output_word = config.get(ConfigKeys.NORMALIZED_PROTOCOL, "").strip()
+        if not output_word:
+            raise ValueError("Missing Normalized_protocol in config.json")
 
-        # Ensure extension
-        if not file_name.endswith(DOCX_EXTENSION):
-            file_name += DOCX_EXTENSION
-
-        # Resolve Desktop dynamically (user-safe, no admin needed)
-        desktop_path = Path.home() / "Desktop"
-
-        # Final output path
-        output_word = str(desktop_path / file_name)
+        if not output_word.endswith(DOCX_EXTENSION):
+            output_word += DOCX_EXTENSION
 
         return exported_word, template_ready_word, output_word
 

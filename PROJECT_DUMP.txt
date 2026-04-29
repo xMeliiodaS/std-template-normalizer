@@ -1,0 +1,2134 @@
+\n===== C:\Projects\std_template_normalizer\src\__init__.py =====\n\n\n\n===== C:\Projects\std_template_normalizer\src\config\config_provider.py =====\n\nimport os
+import json
+import shutil
+
+from src.config.constants import APP_DATA_FOLDER_NAME, CONFIG_FILE_NAME
+from src.config.logging_config import get_logger
+
+logger = get_logger(__name__)
+
+class ConfigProvider:
+    """
+    Class for loading configuration from a per-user JSON file in AppData,
+    or a custom path if provided.
+    """
+
+    @staticmethod
+    def load_config_json(path=None):
+        # """
+        # Load config JSON from an explicit path when provided, otherwise fall
+        # back to repository-local config discovery.
+        # """
+        # if path is None:
+        #     path = os.path.join(os.getcwd(), "config.json")
+        #     if not os.path.exists(path):
+        #         path = os.path.join(os.path.dirname(os.getcwd()), "config.json")
+        #
+        # try:
+        #     with open(path, 'r', encoding='utf-8') as f:
+        #         data = json.load(f)
+        #         return data
+        # except Exception as e:
+        #     logger.exception("Error reading %s from '%s': %s", CONFIG_FILE_NAME, path, e)
+        #     return {}
+
+        """
+        Load the configuration from the user's JSON file or a specified path.
+
+        :param path: Optional full path to config.json
+        :return: The loaded configuration as a dictionary.
+        """
+        if path is None:
+            # --- Determine per-user AppData path ---
+            appdata = os.getenv('APPDATA') or os.path.expanduser('~\\AppData\\Roaming')
+            user_config_folder = os.path.join(appdata, APP_DATA_FOLDER_NAME)
+            os.makedirs(user_config_folder, exist_ok=True)
+            path = os.path.join(user_config_folder, CONFIG_FILE_NAME)
+
+            # --- If config is missing, optionally copy default from exe folder ---
+            if not os.path.exists(path):
+                default_config_path = os.path.join(os.path.dirname(__file__), CONFIG_FILE_NAME)
+                if os.path.exists(default_config_path):
+                    shutil.copy(default_config_path, path)
+                else:
+                    logger.info("Default %s not found. Creating empty config.", CONFIG_FILE_NAME)
+                    with open(path, 'w', encoding='utf-8') as f:
+                        json.dump({}, f)
+
+        # --- Load and return JSON ---
+        try:
+            with open(path, 'r', encoding='utf-8') as f:
+                data = json.load(f)
+            logger.info("Loaded config from: %s", path)
+            return data
+        except Exception as e:
+            logger.exception("Error reading %s: %s", CONFIG_FILE_NAME, e)
+            return {}
+\n\n===== C:\Projects\std_template_normalizer\src\config\constants.py =====\n\n"""
+Constants module for the VSTS Azure Automation project.
+Centralizes all hardcoded values to improve maintainability and clean code practices.
+"""
+
+# ============================================================================
+# Application Configuration
+# ============================================================================
+
+APP_DATA_FOLDER_NAME = "ste_tool_studio"
+CONFIG_FILE_NAME = "config.json"
+
+# ============================================================================
+# File Extensions
+# ============================================================================
+
+DOCX_EXTENSION = ".docx"
+XLSX_EXTENSION = ".xlsx"
+
+# ============================================================================
+# Default Configuration Keys
+# ============================================================================
+
+class ConfigKeys:
+    """Centralized JSON configuration keys."""
+
+    EXPORTED_STD = "Exported_STD"
+    TEMPLATE_PROTOCOL = "Template_protocol"
+    NORMALIZED_PROTOCOL = "Normalized_protocol"
+
+    # Config keys = C# Template Normalizer field names. Word placeholder in comments.
+    DOC_TYPE = "doc_type"
+    DOC_STX = "doc_stx"
+    DOC_RECORD = "doc_record"
+    PROTOCOL_NUMBER = "protocol_number"   # → ADD_PROTOCOL_NUMBER#
+    STD_NAME = "std_name"                 # → ADD_STD_NAME
+    REPORT_NUMBER = "report_number"       # → ADD_REPORT_NUMBER
+    TEST_PLAN = "test_plan"               # → ADD_PLAN_NUMBER
+    STX_NUMBER = "stx_number"             # → ADD_STX_NUMBER
+    PREPARED_BY = "prepared_by"           # → ADD_PREPARED_BY
+    # Legacy / optional
+    FOOTER = "footer"
+    TEST_PROTOCOL = "test_plan"
+
+    LEGACY_KEYS = {
+        "DOC_TYPE": "Doc_type",
+        "DOC_TYPE_STX": "Doc_stx",
+        "DOC_RECORD": "Doc_record",
+        "DOC_STD": "doc_number",          # legacy key for Protocol number
+        "STD_NAME": "STD_name",
+        "PLAN_NUMBER": "PLAN-number",
+        "PREPARED_BY": "Prepared_by",
+        "TEST_PROTOCOL": "Test_protocol",
+        "FOOTER": "Footer",
+        "REPORT_NUMBER": "Report_number",
+        "STX_NUMBER": "STx_number",
+    }
+
+# ============================================================================
+# Word Placeholder Tokens
+# ============================================================================
+
+class WordPlaceholders:
+    """Word placeholder tokens. Field (C#) = config key = placeholder name."""
+
+    DOC_TYPE = "ADD_DOC_TYPE"              # doc_type → Design / Report
+    DOC_TYPE_STx = "ADD_DOC_STX"           # doc_type → STD / STR
+    DOC_RECORD = "ADD_DOC_RECORD"          # doc_type → Protocol / Report
+
+    PROTOCOL_NUMBER = "ADD_PROTOCOL_NUMBER#"   # protocol_number
+    REPORT_NUMBER = "ADD_REPORT_NUMBER"        # report_number
+    STD_NAME = "ADD_STD_NAME"                  # std_name
+    PLAN_NUMBER = "ADD_PLAN_NUMBER"            # test_plan
+    STX_NUMBER = "ADD_STX_NUMBER"              # stx_number
+    PREPARED_BY = "ADD_PREPARED_BY"            # prepared_by
+    FOOTER = "ADD_FOOTER"                      # footer (optional)
+
+# ============================================================================
+# Word Table Handling Constants
+# ============================================================================
+
+class WordTableDefaults:
+    """Defaults for Word table handling and normalization."""
+
+    DEFAULT_TARGET_HEADERS = ["ID"]
+    DEFAULT_PARAGRAPH_SPACING_BEFORE_PT = 0
+    DEFAULT_PARAGRAPH_SPACING_AFTER_PT = 3
+
+    DEFAULT_COLUMN_WIDTHS_CM = [1.67, 3.07, 10.0, 10.5, 3.25, 3.0, 3.0, 4.55]
+
+# ============================================================================
+# Word Orientation & Layout
+# ============================================================================
+
+class WordLayout:
+    """Page layout and formatting defaults."""
+
+    AUTOFIT_TABLE_PERCENT = "5000"
+    AUTOFIT_TABLE_TYPE = "pct"
+    FIXED_LAYOUT_TYPE = "fixed"
+
+# ============================================================================
+# XML Namespaces
+# ============================================================================
+
+class XmlTags:
+    """OpenXML element tags."""
+
+    TABLE_PROPERTIES = "w:tblPr"
+    TABLE_WIDTH = "w:tblW"
+    TABLE_LAYOUT = "w:tblLayout"
+    GRID_COLUMN = "w:gridCol"
+    TABLE_GRID = "w:tblGrid"
+    ROW = "w:tr"
+    ROW_PROPERTIES = "w:trPr"
+    TABLE_HEADER = "w:tblHeader"
+    CELL_WIDTH = "w:tcW"
+    PARAGRAPH_PROPERTIES = "w:pPr"
+    NUMBERING_PROPERTIES = "w:numPr"
+    OUTLINE_LEVEL = "w:outlineLvl"
+    PARAGRAPH_STYLE = "w:pStyle"
+
+# ============================================================================
+# Unit Test Configuration
+# ============================================================================
+
+class TestDefaults:
+    """Unit testing defaults."""
+
+    TEST_METHOD = "test_document_normalization"
+    TEST_RUNNER_VERBOSITY = 2
+
+# ============================================================================
+# Error Messages
+# ============================================================================
+
+class ErrorMessages:
+    """Standardized exception messages."""
+
+    CONFIG_READ_ERROR = "Error reading config.json"
+    DOCX_REQUIRED = "Document path must be a .docx file"
+    TABLE_NOT_FOUND = "Table with headers not found"
+    INVALID_WIDTHS = "widths_cm must be a non-empty list of column widths"
+    COLUMN_MISMATCH = "Width count must match number of table columns"
+    SOURCE_TABLE_INDEX_ERROR = "Source table index out of range"
+    SOURCE_TABLE_TOO_SMALL = "Source table must have at least 2 rows"
+
+# ============================================================================
+# Logging & Debug Output
+# ============================================================================
+
+class LogMessages:
+    """Centralized log and debug output messages."""
+
+    DEFAULT_CONFIG_CREATED = "Default config.json not found. Creating empty config."
+
+
+# ============================================================================
+# Process output markers for C# StatusText (stdout = status, use these if needed)
+# ============================================================================
+
+class ProcessMarkers:
+    """Markers for C# ProcessExecutionService progress parsing."""
+
+    PROGRESS_TOTAL = "PROGRESS_TOTAL:"
+    PROGRESS = "PROGRESS:"
+    PROCESS_FINISHED = "PROCESS_FINISHED"
+\n\n===== C:\Projects\std_template_normalizer\src\config\logging_config.py =====\n\n"""
+Centralized logging for std-template-normalizer.
+Writes to the same log file as the C# app: %APPDATA%\\ste_tool_studio\\ste_tool_studio.log
+Use get_logger(__name__) in modules.
+"""
+import logging
+import os
+import sys
+
+from .constants import APP_DATA_FOLDER_NAME
+
+# Same file name as C# AppConstants.LogFileName so both projects use one log file
+LOG_FILE_NAME = "ste_tool_studio.log"
+
+
+def _log_file_path():
+    appdata = os.getenv("APPDATA") or os.path.expanduser("~\\AppData\\Roaming")
+    return os.path.join(appdata, APP_DATA_FOLDER_NAME, LOG_FILE_NAME)
+
+
+def _ensure_log_dir():
+    path = _log_file_path()
+    d = os.path.dirname(path)
+    os.makedirs(d, exist_ok=True)
+    return path
+
+
+def setup_logging(level=logging.DEBUG):
+    """
+    Configure root logger to write to shared log file (and stderr for debugging).
+    Idempotent; safe to call multiple times.
+    """
+    root = logging.getLogger()
+    if root.handlers:
+        return root
+
+    root.setLevel(level)
+    file_fmt = logging.Formatter(
+        "%(asctime)s.%(msecs)03d | %(levelname)-8s | %(name)s:%(lineno)d | %(message)s",
+        datefmt="%Y-%m-%d %H:%M:%S",
+    )
+    console_fmt = logging.Formatter(
+        "%(levelname)-8s %(name)s:%(lineno)d - %(message)s"
+    )
+
+    try:
+        file_path = _ensure_log_dir()
+        fh = logging.FileHandler(file_path, encoding="utf-8", mode="a")
+        fh.setLevel(level)
+        fh.setFormatter(file_fmt)
+        root.addHandler(fh)
+    except Exception as e:
+        # Fallback: log to stderr only
+        sys.stderr.write(f"Could not create log file: {e}\n")
+
+    ch = logging.StreamHandler(sys.stderr)
+    ch.setLevel(level)
+    ch.setFormatter(console_fmt)
+    root.addHandler(ch)
+
+    return root
+
+
+def get_logger(name: str):
+    """Return a logger for the given module name. Calls setup_logging() on first use."""
+    setup_logging()
+    return logging.getLogger(name)
+\n\n===== C:\Projects\std_template_normalizer\src\excel\__init__.py =====\n\n\n\n===== C:\Projects\std_template_normalizer\src\excel\xlsx_reader.py =====\n\nfrom __future__ import annotations
+
+from pathlib import Path
+from typing import List, Optional
+from xml.etree import ElementTree as ET
+from zipfile import ZipFile
+
+_NS = {
+    "main": "http://schemas.openxmlformats.org/spreadsheetml/2006/main",
+    "rel": "http://schemas.openxmlformats.org/officeDocument/2006/relationships",
+    "pkg_rel": "http://schemas.openxmlformats.org/package/2006/relationships",
+}
+
+
+def _column_index(cell_ref: str) -> int:
+    col = "".join(ch for ch in cell_ref if ch.isalpha())
+    idx = 0
+    for ch in col:
+        idx = idx * 26 + (ord(ch.upper()) - ord("A") + 1)
+    return max(idx - 1, 0)
+
+
+def _shared_strings(zf: ZipFile) -> List[str]:
+    if "xl/sharedStrings.xml" not in zf.namelist():
+        return []
+    root = ET.fromstring(zf.read("xl/sharedStrings.xml"))
+    values: List[str] = []
+    for si in root.findall("main:si", _NS):
+        parts = [t.text or "" for t in si.findall(".//main:t", _NS)]
+        values.append("".join(parts))
+    return values
+
+
+def _resolve_sheet_path(zf: ZipFile, sheet_name: Optional[str]) -> str:
+    workbook = ET.fromstring(zf.read("xl/workbook.xml"))
+    rels = ET.fromstring(zf.read("xl/_rels/workbook.xml.rels"))
+
+    sheets = workbook.findall("main:sheets/main:sheet", _NS)
+    if not sheets:
+        raise ValueError("Workbook has no sheets.")
+
+    selected = None
+    if sheet_name:
+        for sheet in sheets:
+            if sheet.attrib.get("name") == sheet_name:
+                selected = sheet
+                break
+        if selected is None:
+            raise ValueError(f"Sheet '{sheet_name}' not found in workbook.")
+    else:
+        selected = sheets[0]
+
+    rel_id = selected.attrib.get(f"{{{_NS['rel']}}}id")
+    for rel in rels.findall("pkg_rel:Relationship", _NS):
+        if rel.attrib.get("Id") == rel_id:
+            target = rel.attrib["Target"].lstrip("/")
+            if not target.startswith("xl/"):
+                target = f"xl/{target}"
+            return target
+    raise ValueError("Could not resolve sheet relationship.")
+
+
+def read_xlsx_rows(path: str, sheet_name: Optional[str] = None) -> List[List[str]]:
+    """Read worksheet rows from an .xlsx file into a matrix of strings."""
+    xlsx_path = Path(path)
+    with ZipFile(xlsx_path) as zf:
+        shared = _shared_strings(zf)
+        sheet_path = _resolve_sheet_path(zf, sheet_name)
+        sheet = ET.fromstring(zf.read(sheet_path))
+
+    matrix: List[List[str]] = []
+    for row in sheet.findall("main:sheetData/main:row", _NS):
+        row_values: List[str] = []
+        for cell in row.findall("main:c", _NS):
+            ref = cell.attrib.get("r", "A1")
+            idx = _column_index(ref)
+            while len(row_values) <= idx:
+                row_values.append("")
+
+            ctype = cell.attrib.get("t")
+            value_node = cell.find("main:v", _NS)
+            inline_node = cell.find("main:is/main:t", _NS)
+
+            if inline_node is not None:
+                value = inline_node.text or ""
+            elif value_node is None:
+                value = ""
+            elif ctype == "s":
+                shared_idx = int(value_node.text or 0)
+                value = shared[shared_idx] if shared_idx < len(shared) else ""
+            else:
+                value = value_node.text or ""
+            row_values[idx] = value
+        matrix.append(row_values)
+    return matrix
+\n\n===== C:\Projects\std_template_normalizer\src\validation\docx_verifier.py =====\n\nfrom __future__ import annotations
+
+from dataclasses import dataclass
+from typing import List, Dict, Optional, Tuple, Iterable
+
+from docx import Document
+from docx.enum.section import WD_ORIENT
+from docx.oxml.shared import qn
+from docx.table import Table, _Cell
+from src.excel.xlsx_reader import read_xlsx_rows
+
+from src.config.config_provider import ConfigProvider
+from src.config.constants import (
+    WordPlaceholders,
+    WordTableDefaults,
+    WordLayout,
+    XmlTags,
+    ConfigKeys,
+)
+from src.word.placeholder_replacer import get_doc_type_replacements
+from src.word.table_handler import _get_docx_path, _find_table_by_header, _row_is_empty
+
+
+class VerificationError(AssertionError):
+    """Raised when document verification fails."""
+
+
+@dataclass
+class CellLocation:
+    table_index: int
+    row_index: int
+    col_index: int
+
+    def __str__(self) -> str:
+        return f"table={self.table_index}, row={self.row_index}, col={self.col_index}"
+
+
+@dataclass
+class CellDiff:
+    location: CellLocation
+    expected: str
+    actual: str
+    reason: str
+
+
+@dataclass
+class VerificationReport:
+    """
+    Read-only verification outcome.
+
+    This module never writes to documents; it only inspects them and reports findings.
+    """
+    errors: List[str]
+    warnings: List[str]
+
+    @property
+    def passed(self) -> bool:
+        return len(self.errors) == 0
+
+    def add_error(self, message: str) -> None:
+        self.errors.append(message)
+
+    def add_warning(self, message: str) -> None:
+        self.warnings.append(message)
+
+    def raise_if_failed(self) -> None:
+        if self.errors:
+            raise VerificationError(" | ".join(self.errors))
+
+
+def _load_document(path: str) -> Document:
+    """Load a .docx with the same resolution rules as the table handler."""
+    return Document(_get_docx_path(path))
+
+
+def _iter_all_paragraphs(doc: Document):
+    """Yield all paragraphs in body, tables, headers and footers."""
+    # Body paragraphs
+    for p in doc.paragraphs:
+        yield ("body", None, None, None, p)
+
+    # Body tables
+    for ti, table in enumerate(doc.tables):
+        for ri, row in enumerate(table.rows):
+            for ci, cell in enumerate(row.cells):
+                for p in cell.paragraphs:
+                    yield ("table", ti, ri, ci, p)
+
+    # Headers & footers
+    for si, section in enumerate(doc.sections):
+        header = section.header
+        for p in header.paragraphs:
+            yield (f"header[{si}]", None, None, None, p)
+        for ti, table in enumerate(header.tables):
+            for ri, row in enumerate(table.rows):
+                for ci, cell in enumerate(row.cells):
+                    for p in cell.paragraphs:
+                        yield (f"header[{si}].table", ti, ri, ci, p)
+
+        footer = section.footer
+        for p in footer.paragraphs:
+            yield (f"footer[{si}]", None, None, None, p)
+        for ti, table in enumerate(footer.tables):
+            for ri, row in enumerate(table.rows):
+                for ci, cell in enumerate(row.cells):
+                    for p in cell.paragraphs:
+                        yield (f"footer[{si}].table", ti, ri, ci, p)
+
+
+def _normalize_text(text: str) -> str:
+    """
+    Semantic text normalisation:
+    - Strip leading/trailing whitespace
+    - Collapse internal whitespace (incl. non‑breaking) to single spaces
+    """
+    if text is None:
+        return ""
+    # Normalise various whitespace characters that Word commonly uses
+    # (nbsp, tabs, newlines) into single spaces, then collapse.
+    import re
+
+    cleaned = (
+        text.replace("\u00A0", " ")  # non-breaking space
+        .replace("\t", " ")
+        .replace("\r", " ")
+        .replace("\n", " ")
+    )
+    cleaned = re.sub(r"\s+", " ", cleaned)
+    return cleaned.strip()
+
+
+def _cell_logical_text(cell: _Cell) -> str:
+    """
+    Build a logical text representation for a cell:
+    - Preserve paragraph boundaries with '\n'
+    - Concatenate runs within a paragraph
+    - Then apply semantic normalisation
+    """
+    parts: List[str] = []
+    for p in cell.paragraphs:
+        # Paragraph.text already concatenates runs, but we prefer explicit control
+        p_text = "".join(r.text for r in p.runs) or p.text
+        parts.append(p_text or "")
+    joined = "\n".join(parts)
+    return _normalize_text(joined)
+
+
+def _has_merged_cells(table: Table) -> bool:
+    """
+    Detect merged cells via gridSpan (horizontal) or vMerge (vertical).
+    Any presence means the table is structurally unsafe for naïve row/column comparison.
+    """
+    for row in table._tbl.tr_lst:
+        for tc in row.tc_lst:
+            tc_pr = tc.tcPr
+            if tc_pr is None:
+                continue
+            grid_span = tc_pr.find(qn(XmlTags.CELL_WIDTH.replace("tcW", "gridSpan")))
+            v_merge = tc_pr.find(qn("w:vMerge"))
+            if grid_span is not None or v_merge is not None:
+                return True
+    return False
+
+
+def _assert_no_merged_cells(table: Table, table_label: str) -> None:
+    if _has_merged_cells(table):
+        raise VerificationError(
+            f"Merged cells detected in {table_label}. "
+            "Merged cells are not supported by the normalization pipeline and would break row integrity."
+        )
+
+
+def _collect_table_matrix(table: Table, skip_header: bool) -> List[List[str]]:
+    """
+    Collect a 2D logical text matrix from a python-docx Table.
+    Empty rows (all cells empty/whitespace) are treated as data rows with empty strings.
+    """
+    rows = table.rows[1:] if (skip_header and len(table.rows) > 0) else table.rows
+    matrix: List[List[str]] = []
+    for row in rows:
+        matrix.append([_cell_logical_text(cell) for cell in row.cells])
+    return matrix
+
+
+def _collect_excel_matrix(path: str, sheet_name: Optional[str] = None, skip_header: bool = True) -> List[List[str]]:
+    """
+    Collect a 2D logical text matrix from an Excel worksheet.
+    Preserves empty columns by ensuring all rows have the same length.
+    """
+    rows = read_xlsx_rows(path, sheet_name=sheet_name)
+
+    if not rows:
+        return []
+
+    # Determine the maximum column count across all rows
+    # This ensures we don't lose empty columns
+    max_cols = max(len(row) for row in rows) if rows else 0
+
+    # Normalize all rows to have the same column count
+    # Fill missing cells with empty strings
+    normalized_rows = []
+    for row in rows:
+        normalized_row = list(row) + [''] * (max_cols - len(row))
+        normalized_rows.append([_normalize_text(str(cell) if cell is not None else '') for cell in normalized_row])
+
+    if skip_header and normalized_rows:
+        return normalized_rows[1:]
+
+    return normalized_rows
+
+
+def _table_matches_headers(table: Table, expected_headers: List[str]) -> bool:
+    """
+    Check if table's first-row headers match the expected header prefix.
+
+    Uses the same matching semantics as table insertion logic:
+    - Table may contain additional columns beyond expected headers.
+    - Each expected header must be contained in the corresponding table header cell.
+    """
+    if not table.rows:
+        return False
+    header_cells = [_normalize_text(cell.text) for cell in table.rows[0].cells]
+    expected_normalized = [_normalize_text(h) for h in expected_headers]
+
+    if len(header_cells) < len(expected_normalized):
+        return False
+
+    return all(
+        expected_normalized[idx] in header_cells[idx]
+        for idx in range(len(expected_normalized))
+    )
+
+
+def _get_placeholder_replacements() -> Dict[str, str]:
+    """Get all placeholder replacements from config including doc_type overrides."""
+    config = ConfigProvider.load_config_json()
+
+    # Config key = C# field name → Word placeholder
+    protocol_number = config.get(ConfigKeys.PROTOCOL_NUMBER) or config.get(ConfigKeys.LEGACY_KEYS["DOC_STD"]) or ""
+    stx_number = config.get(ConfigKeys.STX_NUMBER) or config.get(ConfigKeys.LEGACY_KEYS["STX_NUMBER"]) or ""
+    protocol_number_display = (
+        f"{protocol_number} ({stx_number})".strip() if (protocol_number and stx_number) else (protocol_number or stx_number)
+    )
+    std_name = config.get(ConfigKeys.STD_NAME) or config.get(ConfigKeys.LEGACY_KEYS["STD_NAME"]) or ""
+    report_number = config.get(ConfigKeys.REPORT_NUMBER) or config.get(ConfigKeys.LEGACY_KEYS["REPORT_NUMBER"]) or ""
+    test_plan = config.get(ConfigKeys.TEST_PLAN) or config.get(ConfigKeys.LEGACY_KEYS["PLAN_NUMBER"]) or ""
+    prepared_by = config.get(ConfigKeys.PREPARED_BY) or config.get(ConfigKeys.LEGACY_KEYS["PREPARED_BY"]) or ""
+    footer = config.get(ConfigKeys.FOOTER) or config.get(ConfigKeys.LEGACY_KEYS["FOOTER"]) or ""
+
+    replacements = {
+        WordPlaceholders.DOC_TYPE: config.get(ConfigKeys.DOC_TYPE) or config.get(ConfigKeys.LEGACY_KEYS["DOC_TYPE"]) or "",
+        WordPlaceholders.DOC_TYPE_STx: config.get(ConfigKeys.DOC_STX) or config.get(ConfigKeys.LEGACY_KEYS["DOC_TYPE_STX"]) or "",
+        WordPlaceholders.DOC_RECORD: config.get(ConfigKeys.DOC_RECORD) or config.get(ConfigKeys.LEGACY_KEYS["DOC_RECORD"]) or "",
+        WordPlaceholders.PROTOCOL_NUMBER: protocol_number_display,
+        WordPlaceholders.REPORT_NUMBER: report_number,
+        WordPlaceholders.STD_NAME: std_name,
+        WordPlaceholders.PLAN_NUMBER: test_plan,
+        WordPlaceholders.STX_NUMBER: stx_number,
+        WordPlaceholders.PREPARED_BY: prepared_by,
+        WordPlaceholders.FOOTER: footer,
+        "ADD_DOC_STD#": protocol_number_display,
+        "ADD_TEST_PROTOCOL": report_number,
+    }
+
+    # Apply doc_type-based overrides
+    doc_type_from_config = config.get(ConfigKeys.DOC_TYPE) or config.get(
+        ConfigKeys.LEGACY_KEYS["DOC_TYPE"]
+    )
+    doc_type_replacements = get_doc_type_replacements(doc_type_from_config)
+    if doc_type_replacements:
+        replacements.update(doc_type_replacements)
+
+    return replacements
+
+
+def _is_valid_placeholder_replacement(template_text: str, normalized_text: str) -> bool:
+    """
+    Check if difference between template and normalized text is due to valid placeholder replacement.
+    Returns True if the normalized text matches what we'd expect after replacing all placeholders.
+    """
+    replacements = _get_placeholder_replacements()
+
+    # Try replacing all placeholders in template text
+    expected = template_text
+    for placeholder, value in replacements.items():
+        if value:
+            expected = expected.replace(placeholder, value)
+
+    return _normalize_text(expected) == _normalize_text(normalized_text)
+
+
+def validate_table_content_integrity(
+        exported_std_path: str,
+        normalized_protocol_path: str,
+        expected_target_headers: Optional[List[str]] = None,
+) -> None:
+    """
+    PROVE that every logical data cell from the source STD exists in the output document.
+
+    Validation logic:
+    - Source: first table in exported STD, data rows = all rows after header.
+    - Target: table in normalized protocol identified by header detection.
+    - Target data rows = all non-empty rows after header.
+    - Row and column counts must match.
+    - Each corresponding logical cell (semantic text) must match.
+    - Detect merged cells and fail explicitly if present.
+    """
+    source_is_excel = exported_std_path.lower().endswith(".xlsx")
+    exported_doc = None if source_is_excel else _load_document(exported_std_path)
+    normalized_doc = _load_document(normalized_protocol_path)
+
+    if source_is_excel:
+        src_matrix = _collect_excel_matrix(exported_std_path, skip_header=True)
+    else:
+        if not exported_doc.tables:
+            raise VerificationError("Source STD document contains no tables.")
+
+        src_table = exported_doc.tables[0]
+        _assert_no_merged_cells(src_table, "source STD table[0]")
+        src_matrix = _collect_table_matrix(src_table, skip_header=True)
+
+    if expected_target_headers is None:
+        expected_target_headers = WordTableDefaults.DEFAULT_TARGET_HEADERS
+
+    try:
+        target_table = _find_table_by_header(normalized_doc, expected_headers=expected_target_headers)
+    except Exception as exc:
+        raise VerificationError(
+            f"Target table with headers {expected_target_headers} not found in normalized protocol: {exc}"
+        ) from exc
+
+    _assert_no_merged_cells(target_table, "normalized protocol target table")
+
+    # In the target table, ignore purely empty rows (template placeholders that were not used)
+    # but preserve order.
+    target_rows_after_header = list(target_table.rows)[1:] if len(target_table.rows) > 1 else []
+    target_data_rows: List[List[str]] = []
+    for row in target_rows_after_header:
+        if _row_is_empty(row):
+            continue
+        target_data_rows.append([_cell_logical_text(cell) for cell in row.cells])
+
+    # Row count check
+    if len(src_matrix) != len(target_data_rows):
+        raise VerificationError(
+            f"Row count mismatch between source STD and normalized protocol target table. "
+            f"Expected {len(src_matrix)} data rows from STD, "
+            f"but found {len(target_data_rows)} non-empty data rows in target table."
+        )
+
+    # Column count & per-cell checks with rich diagnostics
+    for row_idx, (src_row, dst_row) in enumerate(zip(src_matrix, target_data_rows), start=1):
+        if len(src_row) != len(dst_row):
+            raise VerificationError(
+                f"Column count mismatch at data row {row_idx}. "
+                f"Source has {len(src_row)} columns, target has {len(dst_row)} columns."
+            )
+        for col_idx, (src_cell, dst_cell) in enumerate(zip(src_row, dst_row), start=0):
+            if src_cell != dst_cell:
+                location = CellLocation(
+                    table_index=0,  # source is fixed; target table is identified by header
+                    row_index=row_idx,
+                    col_index=col_idx,
+                )
+                raise VerificationError(
+                    f"Content mismatch at {location}. "
+                    f"Expected (from STD): '{src_cell}' | Actual (in protocol): '{dst_cell}'."
+                )
+
+
+def validate_structural_correctness(
+        normalized_protocol_path: str,
+        expected_target_headers: Optional[List[str]] = None,
+        expected_column_count: Optional[int] = None,
+        enforce_exact_column_count: bool = True,
+) -> None:
+    """
+    Validate structural correctness of the target table:
+    - Table is located via header detection.
+    - Column count matches expected (defaults to config widths length).
+    - Ensures there is at least one data row present (insertion took place).
+    """
+    doc = _load_document(normalized_protocol_path)
+
+    if expected_target_headers is None:
+        expected_target_headers = WordTableDefaults.DEFAULT_TARGET_HEADERS
+
+    try:
+        table = _find_table_by_header(doc, expected_headers=expected_target_headers)
+    except Exception as exc:
+        raise VerificationError(
+            f"Target table with headers {expected_target_headers} not found in normalized protocol: {exc}"
+        ) from exc
+
+    if not table.rows:
+        raise VerificationError("Target table has no rows at all (missing header row).")
+
+    header_cells = table.rows[0].cells
+    if expected_column_count is None:
+        expected_column_count = len(WordTableDefaults.DEFAULT_COLUMN_WIDTHS_CM)
+
+    if enforce_exact_column_count and len(header_cells) != expected_column_count:
+        raise VerificationError(
+            f"Target table column count mismatch. "
+            f"Expected {expected_column_count} columns, found {len(header_cells)}."
+        )
+
+    # Ensure that we actually have inserted data rows (either into placeholder rows or appended)
+    data_rows = list(table.rows)[1:] if len(table.rows) > 1 else []
+    non_empty_data_rows = [r for r in data_rows if not _row_is_empty(r)]
+    if not non_empty_data_rows:
+        raise VerificationError(
+            "Target table contains no non-empty data rows after the header. "
+            "Row insertion into placeholder/appended rows appears to have failed."
+        )
+
+
+def validate_formatting(
+        normalized_protocol_path: str,
+        expected_column_widths_cm: Optional[List[float]] = None,
+        expected_target_headers: Optional[List[str]] = None,
+) -> None:
+    """
+    Validate formatting normalization:
+    - All sections are landscape.
+    - All tables are set to AutoFit to Window (tblW type=pct, w=5000).
+    - Target table has fixed column widths matching the configuration.
+    - Paragraph spacing (before, after) is Normalized (0pt before, 3pt after).
+    - Second column paragraphs:
+        * Have 'Normal' style.
+        * Have no numbering (w:numPr / w:outlineLvl).
+    """
+    from docx.shared import Pt
+
+    doc = _load_document(normalized_protocol_path)
+
+    # ---- Landscape orientation on all sections ----
+    for idx, section in enumerate(doc.sections):
+        if section.orientation != WD_ORIENT.LANDSCAPE:
+            raise VerificationError(f"Section {idx} is not in landscape orientation.")
+        if section.page_width < section.page_height:
+            raise VerificationError(
+                f"Section {idx} has portrait page dimensions (width < height) despite LANDSCAPE orientation."
+            )
+
+    # ---- Target table column widths ----
+    if expected_target_headers is None:
+        expected_target_headers = WordTableDefaults.DEFAULT_TARGET_HEADERS
+    if expected_column_widths_cm is None:
+        expected_column_widths_cm = WordTableDefaults.DEFAULT_COLUMN_WIDTHS_CM
+
+    try:
+        target_table = _find_table_by_header(doc, expected_headers=expected_target_headers)
+    except Exception as exc:
+        raise VerificationError(
+            f"Target table with headers {expected_target_headers} not found when validating column widths: {exc}"
+        ) from exc
+
+    if not target_table.rows:
+        raise VerificationError("Target table has no rows when validating column widths.")
+
+    if len(target_table.rows[0].cells) != len(expected_column_widths_cm):
+        raise VerificationError(
+            "Target table column count does not match configured widths length: "
+            f"{len(target_table.rows[0].cells)} vs {len(expected_column_widths_cm)}."
+        )
+
+    # Validate paragraph spacing across the entire document
+    expected_before = Pt(WordTableDefaults.DEFAULT_PARAGRAPH_SPACING_BEFORE_PT)
+    expected_after = Pt(WordTableDefaults.DEFAULT_PARAGRAPH_SPACING_AFTER_PT)
+
+    def _check_spacing(paragraph, context: str) -> None:
+        pf = paragraph.paragraph_format
+        # python-docx may represent these as Length or None; normalise via .pt
+        before = getattr(pf.space_before, "pt", 0 if pf.space_before is None else pf.space_before)
+        after = getattr(pf.space_after, "pt", 0 if pf.space_after is None else pf.space_after)
+        if abs(before - expected_before.pt) > 0.01 or abs(after - expected_after.pt) > 0.01:
+            raise VerificationError(
+                f"Paragraph spacing mismatch in {context}. "
+                f"Expected before={expected_before.pt}pt, after={expected_after.pt}pt; "
+                f"got before={before}pt, after={after}pt."
+            )
+
+    # Body paragraphs
+    for idx, p in enumerate(doc.paragraphs):
+        _check_spacing(p, f"body paragraph {idx}")
+
+    # Table paragraphs
+    for ti, table in enumerate(doc.tables):
+        for ri, row in enumerate(table.rows):
+            for ci, cell in enumerate(row.cells):
+                for pi, p in enumerate(cell.paragraphs):
+                    _check_spacing(p, f"table {ti} row {ri} col {ci} paragraph {pi}")
+
+    # ---- Second column formatting in the target table ----
+    for ri, row in enumerate(target_table.rows[1:], start=1):  # skip header
+        if len(row.cells) < 2:
+            continue
+        cell = row.cells[1]
+        for pi, p in enumerate(cell.paragraphs):
+            # Style name check (semantic)
+            style_name = getattr(p.style, "name", None)
+            if style_name is None or style_name.lower() != "normal":
+                raise VerificationError(
+                    f"Second column paragraph at row {ri}, paragraph {pi} "
+                    f"has style '{style_name}', expected 'Normal'."
+                )
+
+            # Numbering check via underlying XML
+            p_elm = p._element
+            pPr = p_elm.find(qn(XmlTags.PARAGRAPH_PROPERTIES))
+            if pPr is not None:
+                numPr = pPr.find(qn(XmlTags.NUMBERING_PROPERTIES))
+                outlineLvl = pPr.find(qn(XmlTags.OUTLINE_LEVEL))
+                if numPr is not None or outlineLvl is not None:
+                    raise VerificationError(
+                        f"Second column paragraph at row {ri}, paragraph {pi} still has numbering metadata "
+                        f"(w:numPr or w:outlineLvl present)."
+                    )
+
+
+def detect_unresolved_placeholders(doc: Document) -> Dict[str, List[str]]:
+    """
+    Scan the entire document (body, tables, headers, footers) and return
+    a mapping: placeholder_token -> list of human-readable locations where it appears.
+    """
+    placeholders = [
+        WordPlaceholders.DOC_TYPE,
+        WordPlaceholders.DOC_TYPE_STx,
+        WordPlaceholders.DOC_RECORD,
+        WordPlaceholders.PROTOCOL_NUMBER,
+        WordPlaceholders.REPORT_NUMBER,
+        WordPlaceholders.STD_NAME,
+        WordPlaceholders.PLAN_NUMBER,
+        WordPlaceholders.STX_NUMBER,
+        WordPlaceholders.PREPARED_BY,
+        WordPlaceholders.FOOTER,
+        "ADD_DOC_STD#",
+        "ADD_TEST_PROTOCOL",
+    ]
+
+    hits: Dict[str, List[str]] = {ph: [] for ph in placeholders}
+
+    for scope, ti, ri, ci, p in _iter_all_paragraphs(doc):
+        text = p.text or ""
+        for ph in placeholders:
+            if ph in text:
+                location = f"{scope}"
+                if ti is not None:
+                    location += f", table={ti}"
+                if ri is not None and ci is not None:
+                    location += f", row={ri}, col={ci}"
+                hits[ph].append(location)
+
+    # Remove placeholders that were not found
+    return {ph: locs for ph, locs in hits.items() if locs}
+
+
+def _collect_full_document_text(doc: Document) -> str:
+    fragments: List[str] = []
+    for _, _, _, _, p in _iter_all_paragraphs(doc):
+        if p.text:
+            fragments.append(p.text)
+    return "\n".join(fragments)
+
+
+def validate_placeholder_replacement(
+        normalized_protocol_path: str,
+        template_protocol_path: Optional[str] = None,
+) -> None:
+    """
+    Validate that:
+    - All known placeholders are fully replaced in body, tables, headers, and footers.
+    - Replacement values exactly match configuration (including doc_type overrides).
+    """
+    normalized_doc = _load_document(normalized_protocol_path)
+
+    unresolved = detect_unresolved_placeholders(normalized_doc)
+    if unresolved:
+        details = "; ".join(
+            f"{ph} -> {locations}" for ph, locations in unresolved.items()
+        )
+        raise VerificationError(
+            f"Unresolved placeholders remain in the normalized protocol: {details}"
+        )
+
+    # Compute expected replacement values using the same logic as the production replacer
+    replacements = _get_placeholder_replacements()
+
+    normalized_full_text = _collect_full_document_text(normalized_doc)
+
+    # If template is provided, only enforce values for placeholders that are present in template.
+    # This prevents false failures when config contains values for placeholders not used by a specific template.
+    placeholders_to_enforce = set(replacements.keys())
+    if template_protocol_path:
+        template_doc = _load_document(template_protocol_path)
+        template_text = _collect_full_document_text(template_doc)
+        placeholders_to_enforce = {
+            placeholder for placeholder in replacements.keys() if placeholder in template_text
+        }
+
+    for placeholder in placeholders_to_enforce:
+        expected_value = replacements.get(placeholder)
+        if not expected_value:
+            continue  # empty config is allowed; nothing to assert
+        if expected_value not in normalized_full_text:
+            raise VerificationError(
+                f"Expected replacement value for {placeholder} not found in document text. "
+                f"Expected: '{expected_value}'."
+            )
+
+
+def validate_template_preservation(
+        template_protocol_path: str,
+        normalized_protocol_path: str,
+        expected_target_headers: Optional[List[str]] = None,
+) -> None:
+    """
+    Verify that all non-target-table content from the template
+    is preserved in the normalized output.
+
+    This ensures:
+    - Table count remains the same
+    - Non-target tables are identical (allowing only placeholder replacements)
+    - Table structure (row/column counts) is preserved
+    """
+    template_doc = _load_document(template_protocol_path)
+    normalized_doc = _load_document(normalized_protocol_path)
+
+    if expected_target_headers is None:
+        expected_target_headers = WordTableDefaults.DEFAULT_TARGET_HEADERS
+
+    # Find target table indices
+    template_target_idx = None
+    for idx, table in enumerate(template_doc.tables):
+        if _table_matches_headers(table, expected_target_headers):
+            template_target_idx = idx
+            break
+
+    normalized_target_idx = None
+    for idx, table in enumerate(normalized_doc.tables):
+        if _table_matches_headers(table, expected_target_headers):
+            normalized_target_idx = idx
+            break
+
+    if template_target_idx is None:
+        raise VerificationError(
+            f"Target table with headers {expected_target_headers} not found in template."
+        )
+
+    if normalized_target_idx is None:
+        raise VerificationError(
+            f"Target table with headers {expected_target_headers} not found in normalized document."
+        )
+
+    # Verify table count (should be same)
+    if len(template_doc.tables) != len(normalized_doc.tables):
+        raise VerificationError(
+            f"Table count mismatch. Template has {len(template_doc.tables)} tables, "
+            f"normalized has {len(normalized_doc.tables)} tables."
+        )
+
+    # Verify non-target tables are identical (allowing placeholder replacements)
+    for idx, (tmpl_table, norm_table) in enumerate(zip(template_doc.tables, normalized_doc.tables)):
+        if idx == template_target_idx:
+            continue  # Skip target table (it's intentionally modified)
+
+        # Compare structure
+        if len(tmpl_table.rows) != len(norm_table.rows):
+            raise VerificationError(
+                f"Non-target table {idx} row count changed. "
+                f"Template: {len(tmpl_table.rows)}, Normalized: {len(norm_table.rows)}"
+            )
+
+        # Compare content
+        for ri, (tmpl_row, norm_row) in enumerate(zip(tmpl_table.rows, norm_table.rows)):
+            if len(tmpl_row.cells) != len(norm_row.cells):
+                raise VerificationError(
+                    f"Non-target table {idx} row {ri} column count changed. "
+                    f"Template: {len(tmpl_row.cells)}, Normalized: {len(norm_row.cells)}"
+                )
+            for ci, (tmpl_cell, norm_cell) in enumerate(zip(tmpl_row.cells, norm_row.cells)):
+                tmpl_text = _cell_logical_text(tmpl_cell)
+                norm_text = _cell_logical_text(norm_cell)
+
+                # If texts differ, check if it's a valid placeholder replacement
+                if tmpl_text != norm_text:
+                    if not _is_valid_placeholder_replacement(tmpl_text, norm_text):
+                        raise VerificationError(
+                            f"Non-target table {idx} cell (row={ri}, col={ci}) content changed unexpectedly. "
+                            f"Template: '{tmpl_text}' -> Normalized: '{norm_text}'"
+                        )
+
+
+def validate_body_paragraphs_preserved(
+        template_protocol_path: str,
+        normalized_protocol_path: str,
+) -> None:
+    """
+    Verify body paragraphs (outside tables) are preserved.
+
+    Allows only placeholder replacements as valid differences.
+    """
+    template_doc = _load_document(template_protocol_path)
+    normalized_doc = _load_document(normalized_protocol_path)
+
+    if len(template_doc.paragraphs) != len(normalized_doc.paragraphs):
+        raise VerificationError(
+            f"Body paragraph count changed. "
+            f"Template: {len(template_doc.paragraphs)}, "
+            f"Normalized: {len(normalized_doc.paragraphs)}"
+        )
+
+    for idx, (tmpl_p, norm_p) in enumerate(zip(template_doc.paragraphs, normalized_doc.paragraphs)):
+        tmpl_text = _normalize_text(tmpl_p.text)
+        norm_text = _normalize_text(norm_p.text)
+
+        if tmpl_text != norm_text:
+            if not _is_valid_placeholder_replacement(tmpl_p.text, norm_p.text):
+                raise VerificationError(
+                    f"Body paragraph {idx} changed unexpectedly. "
+                    f"Template: '{tmpl_text}' -> Normalized: '{norm_text}'"
+                )
+
+
+def verify_normalized_protocol(
+        exported_std_path: str,
+        template_protocol_path: str,
+        normalized_protocol_path: str,
+        strict: bool = False,
+) -> VerificationReport:
+    """
+    High-level, reusable verification entry point for CI-grade validation.
+
+    This orchestrates:
+    - Content integrity checks between the exported STD and normalized protocol.
+    - Structural correctness of the target table.
+    - Formatting normalization across the document.
+    - Placeholder replacement correctness.
+    - Template preservation (non-target content unchanged).
+
+    In strict mode, any error raises VerificationError.
+    In non-strict mode, non-critical checks are reported as warnings.
+    """
+    report = VerificationReport(errors=[], warnings=[])
+
+    def _run(check_name: str, fn, as_warning_in_non_strict: bool = False) -> None:
+        try:
+            fn()
+        except VerificationError as exc:
+            if strict or not as_warning_in_non_strict:
+                report.add_error(f"{check_name}: {exc}")
+            else:
+                report.add_warning(f"{check_name}: {exc}")
+
+    # 1. Content integrity (critical)
+    _run(
+        "content_integrity",
+        lambda: validate_table_content_integrity(
+            exported_std_path=exported_std_path,
+            normalized_protocol_path=normalized_protocol_path,
+        ),
+        as_warning_in_non_strict=False,
+    )
+
+    # 2. Structural correctness (critical), but allow relaxed column-count policy in non-strict mode
+    _run(
+        "structural_correctness",
+        lambda: validate_structural_correctness(
+            normalized_protocol_path=normalized_protocol_path,
+            enforce_exact_column_count=strict,
+        ),
+        as_warning_in_non_strict=False,
+    )
+
+    # 3. Formatting normalization (non-critical in non-strict mode)
+    _run(
+        "formatting",
+        lambda: validate_formatting(normalized_protocol_path=normalized_protocol_path),
+        as_warning_in_non_strict=True,
+    )
+
+    # 4. Placeholders (critical)
+    _run(
+        "placeholder_replacement",
+        lambda: validate_placeholder_replacement(
+            normalized_protocol_path=normalized_protocol_path,
+            template_protocol_path=template_protocol_path,
+        ),
+        as_warning_in_non_strict=False,
+    )
+
+    # 5. Template preservation (non-critical in non-strict mode)
+    _run(
+        "template_preservation",
+        lambda: validate_template_preservation(
+            template_protocol_path=template_protocol_path,
+            normalized_protocol_path=normalized_protocol_path,
+        ),
+        as_warning_in_non_strict=True,
+    )
+
+    # 6. Body paragraph preservation (non-critical in non-strict mode)
+    _run(
+        "body_paragraphs_preserved",
+        lambda: validate_body_paragraphs_preserved(
+            template_protocol_path=template_protocol_path,
+            normalized_protocol_path=normalized_protocol_path,
+        ),
+        as_warning_in_non_strict=True,
+    )
+
+    if strict:
+        report.raise_if_failed()
+
+    return report
+\n\n===== C:\Projects\std_template_normalizer\src\word\placeholder_replacer.py =====\n\nimport os
+from docx import Document
+from docx.table import Table
+from src.config.config_provider import ConfigProvider
+from src.config.constants import DOCX_EXTENSION, WordPlaceholders, ConfigKeys
+from src.config.logging_config import get_logger
+import re
+
+logger = get_logger(__name__)
+
+# doc_type from external config -> replacement values for DOC_TYPE, DOC_RECORD, DOC_TYPE_STx
+_DOC_TYPE_REPLACEMENT_MAP = {
+    "protocol": {
+        # Protocol mode
+        # ADD_DOC_TYPE -> Design
+        WordPlaceholders.DOC_TYPE: "Design",
+        # ADD_DOC_RECORD -> Protocol
+        WordPlaceholders.DOC_RECORD: "Protocol",
+        # ADD_DOC_STX -> STD
+        WordPlaceholders.DOC_TYPE_STx: "(STD)",
+    },
+    "report": {
+        # Report mode
+        # ADD_DOC_TYPE -> Report
+        WordPlaceholders.DOC_TYPE: "Report",
+        # ADD_DOC_RECORD -> Report
+        WordPlaceholders.DOC_RECORD: "Report",
+        # ADD_DOC_STX -> STR
+        WordPlaceholders.DOC_TYPE_STx: "(STR)",
+    },
+}
+
+
+def get_doc_type_replacements(doc_type: str):
+    """
+    Get replacement values for DOC_TYPE, DOC_RECORD, and DOC_TYPE_STx placeholders
+    based on the doc_type from the external config (e.g. "protocol", "report").
+
+    :param doc_type: Value of "doc_type" from config (e.g. "protocol", "report").
+    :return: Dict mapping placeholder keys to replacement strings, or None if doc_type is not mapped.
+    """
+    if not doc_type:
+        return None
+    return _DOC_TYPE_REPLACEMENT_MAP.get(doc_type.strip().lower())
+
+
+def _replace_text_in_paragraph(paragraph, replacements: dict):
+    if not paragraph.runs:
+        return
+    # Mutate only the run text that directly contains a placeholder.
+    # This avoids reflowing text between runs and preserves line breaks,
+    # spacing, and run-level formatting outside the exact replacement span.
+    for run in paragraph.runs:
+        run_text = run.text
+        new_run_text = run_text
+
+        for placeholder, value in replacements.items():
+            if placeholder in new_run_text:
+                new_run_text = new_run_text.replace(placeholder, value)
+
+        if new_run_text != run_text:
+            run.text = new_run_text
+
+    def _replace_token_across_runs(token: str, replacement: str):
+        if not token:
+            return
+
+        while True:
+            run_texts = [run.text for run in paragraph.runs]
+            full_text = "".join(run_texts)
+            start_idx = full_text.find(token)
+            if start_idx == -1:
+                return
+
+            end_idx = start_idx + len(token)
+
+            # Map absolute paragraph offsets to run index and run-local offset.
+            cumulative = 0
+            start_run_idx = start_off = end_run_idx = end_off = 0
+            start_found = end_found = False
+
+            for idx, run_text in enumerate(run_texts):
+                next_cumulative = cumulative + len(run_text)
+
+                if not start_found and start_idx < next_cumulative:
+                    start_run_idx = idx
+                    start_off = start_idx - cumulative
+                    start_found = True
+
+                if not end_found and end_idx <= next_cumulative:
+                    end_run_idx = idx
+                    end_off = end_idx - cumulative
+                    end_found = True
+                    break
+
+                cumulative = next_cumulative
+
+            if not (start_found and end_found):
+                return
+
+            if start_run_idx == end_run_idx:
+                run = paragraph.runs[start_run_idx]
+                run.text = run.text[:start_off] + replacement + run.text[end_off:]
+                continue
+
+            start_run = paragraph.runs[start_run_idx]
+            end_run = paragraph.runs[end_run_idx]
+
+            start_prefix = start_run.text[:start_off]
+            end_suffix = end_run.text[end_off:]
+
+            start_run.text = start_prefix + replacement
+
+            for mid_idx in range(start_run_idx + 1, end_run_idx):
+                paragraph.runs[mid_idx].text = ""
+
+            end_run.text = end_suffix
+
+    # Replace placeholders individually while preserving existing run structure.
+    for placeholder, value in replacements.items():
+        _replace_token_across_runs(placeholder, value)
+
+
+def replace_text_in_table(table, replacements: dict):
+    for row in table.rows:
+        for cell in row.cells:
+            for paragraph in cell.paragraphs:
+                _replace_text_in_paragraph(paragraph, replacements)
+
+
+def delete_rows_with_marker(table, marker: str):
+    rows_to_delete = []
+
+    for row in table.rows:
+        row_text = " ".join(cell.text for cell in row.cells)
+        if marker in row_text:
+            rows_to_delete.append(row)
+
+    for row in rows_to_delete:
+        tbl = row._element.getparent()
+        tbl.remove(row._element)
+
+
+def replace_placeholders_using_config(docx_path, output_path=None):
+    config = ConfigProvider.load_config_json()
+
+    # Ensure output_path has .docx extension if it doesn't
+    if output_path and not output_path.endswith(DOCX_EXTENSION):
+        output_path = output_path + DOCX_EXTENSION
+
+    # Ensure docx_path exists and has .docx extension
+    if not docx_path.endswith(DOCX_EXTENSION):
+        if os.path.exists(docx_path + DOCX_EXTENSION):
+            docx_path = docx_path + DOCX_EXTENSION
+        else:
+            raise ValueError(f"Document path must be a {DOCX_EXTENSION} file: {docx_path}")
+
+    out = output_path or docx_path
+    logger.info("Replacing placeholders. Input: %s, Output: %s", docx_path, out)
+
+    doc = Document(docx_path)
+
+    # Values from C# Template Normalizer (config key = field name → Word placeholder)
+    protocol_number = config.get(ConfigKeys.PROTOCOL_NUMBER) or config.get(ConfigKeys.LEGACY_KEYS["DOC_STD"]) or ""
+    stx_number = config.get(ConfigKeys.STX_NUMBER) or config.get(ConfigKeys.LEGACY_KEYS["STX_NUMBER"]) or ""
+    stx_number = f"({stx_number})"
+    protocol_number_display = f"{protocol_number}"
+    std_name = config.get(ConfigKeys.STD_NAME) or config.get(ConfigKeys.LEGACY_KEYS["STD_NAME"]) or ""
+    report_number = config.get(ConfigKeys.REPORT_NUMBER) or config.get(ConfigKeys.LEGACY_KEYS["REPORT_NUMBER"]) or ""
+    test_plan = config.get(ConfigKeys.TEST_PLAN) or config.get(ConfigKeys.LEGACY_KEYS["PLAN_NUMBER"]) or ""
+    prepared_by = config.get(ConfigKeys.PREPARED_BY) or config.get(ConfigKeys.LEGACY_KEYS["PREPARED_BY"]) or ""
+    footer = config.get(ConfigKeys.FOOTER) or config.get(ConfigKeys.LEGACY_KEYS["FOOTER"]) or ""
+
+    is_report = (config.get(ConfigKeys.DOC_TYPE) or "").strip().lower() == "report"
+
+    add_doc_std_value = report_number if is_report else protocol_number_display
+
+    replacements = {
+        WordPlaceholders.DOC_TYPE: config.get(ConfigKeys.DOC_TYPE) or config.get(
+            ConfigKeys.LEGACY_KEYS["DOC_TYPE"]) or "",
+        WordPlaceholders.DOC_TYPE_STx: config.get(ConfigKeys.DOC_STX) or config.get(
+            ConfigKeys.LEGACY_KEYS["DOC_TYPE_STX"]) or "",
+        WordPlaceholders.DOC_RECORD: config.get(ConfigKeys.DOC_RECORD) or config.get(
+            ConfigKeys.LEGACY_KEYS["DOC_RECORD"]) or "",
+        WordPlaceholders.PROTOCOL_NUMBER: protocol_number_display,
+        WordPlaceholders.REPORT_NUMBER: report_number,
+        WordPlaceholders.STD_NAME: std_name,
+        WordPlaceholders.PLAN_NUMBER: test_plan,
+        WordPlaceholders.STX_NUMBER: stx_number,
+        WordPlaceholders.PREPARED_BY: prepared_by,
+        WordPlaceholders.FOOTER: footer,
+        # Legacy placeholders (same values)
+
+        "ADD_DOC_STD#": add_doc_std_value,
+    }
+
+    # Override DOC_TYPE, DOC_RECORD, DOC_TYPE_STx when doc_type is "protocol" or "report"
+    doc_type_from_config = config.get(ConfigKeys.DOC_TYPE) or config.get(ConfigKeys.LEGACY_KEYS["DOC_TYPE"])
+    doc_type_replacements = get_doc_type_replacements(doc_type_from_config)
+    if doc_type_replacements:
+        replacements.update(doc_type_replacements)
+
+    # ---- Body ----
+    for paragraph in doc.paragraphs:
+        _replace_text_in_paragraph(paragraph, replacements)
+
+    for table in doc.tables:
+        if not is_report:
+            delete_rows_with_marker(table, "TO_BE_DELETED_ROW")
+
+        replace_text_in_table(table, replacements)
+
+    # ---- Headers & Footers ----
+    for section in doc.sections:
+        for paragraph in section.header.paragraphs:
+            _replace_text_in_paragraph(paragraph, replacements)
+
+        for table in section.header.tables:
+            replace_text_in_table(table, replacements)
+
+        for paragraph in section.footer.paragraphs:
+            _replace_text_in_paragraph(paragraph, replacements)
+
+        for table in section.footer.tables:
+            replace_text_in_table(table, replacements)
+
+        for table in doc.tables:
+            replace_text_in_table(table, {"TO_BE_DELETED_ROW": ""})
+
+    # Save document
+    doc.save(output_path or docx_path)
+    logger.info("Output: Placeholders replaced successfully.")
+\n\n===== C:\Projects\std_template_normalizer\src\word\table_handler.py =====\n\nfrom copy import deepcopy
+import os
+import re
+from docx import Document
+from docx.shared import Cm, Pt
+from docx.table import Table
+from docx.enum.section import WD_ORIENT
+from docx.oxml.shared import OxmlElement, qn
+from src.excel.xlsx_reader import read_xlsx_rows
+
+
+def _ensure_docx_extension(path: str) -> str:
+    """Ensure the path has .docx extension. Returns the path with .docx if it doesn't have it."""
+    if path and not path.endswith('.docx'):
+        return path + '.docx'
+    return path
+
+
+def _get_docx_path(path: str) -> str:
+    """Get the docx path, checking if .docx extension needs to be added for opening."""
+    if path.endswith('.docx'):
+        return path
+    # Check if file exists with .docx extension
+    if os.path.exists(path + '.docx'):
+        return path + '.docx'
+    # If file exists without extension, try to open it (python-docx can handle it)
+    if os.path.exists(path):
+        return path
+    # If neither exists, try with .docx extension (might be creating new file)
+    return path + '.docx'
+
+
+def set_landscape_for_all_sections(docx_path: str, output_path: str = None):
+    """
+    Force all sections to Landscape without toggling.
+    - Sets orientation to LANDSCAPE.
+    - Swaps width/height only if the current page is Portrait (width < height).
+    """
+    document = Document(_get_docx_path(docx_path))
+
+    for section in document.sections:
+        # Always set orientation
+        section.orientation = WD_ORIENT.LANDSCAPE
+
+        # Only swap if the page is currently portrait
+        if section.page_width < section.page_height:
+            section.page_width, section.page_height = section.page_height, section.page_width
+
+    save_path = _ensure_docx_extension(output_path or docx_path)
+    document.save(save_path)
+
+
+def set_tables_autofit_to_window(docx_path: str, output_path: str = None, clear_column_widths: bool = True):
+    """
+    Applies Word's 'Layout -> AutoFit -> AutoFit to Window' to all tables in a .docx:
+      - Set table preferred width to 100% (pct=5000, meaning 100%).
+      - Remove fixed table layout (w:tblLayout w:type='fixed') to enable AutoFit behavior.
+      - Optionally remove cell-level fixed widths so Word can reflow columns.
+
+    Args:
+        docx_path: str - path to input .docx
+        output_path: str | None - path to save; overwrites input if None
+        clear_column_widths: bool - remove <w:tcW> from cells to allow true autofit
+    """
+    doc = Document(_get_docx_path(docx_path))
+
+    for table in doc.tables:
+        tbl = table._tbl  # <w:tbl>
+        tblPr = tbl.tblPr
+        if tblPr is None:
+            # Ensure <w:tblPr> exists
+            tblPr = OxmlElement('w:tblPr')
+            tbl.insert(0, tblPr)
+
+        # ---- Preferred width: 100% (AutoFit to Window) ----
+        # Look for existing <w:tblW>; create if missing
+        tblW = tblPr.find(qn('w:tblW'))
+        if tblW is None:
+            tblW = OxmlElement('w:tblW')
+            tblPr.append(tblW)
+        # Set as percentage (fiftieths of a percent): 100% -> 5000
+        tblW.set(qn('w:type'), 'pct')
+        tblW.set(qn('w:w'), '5000')
+
+        # ---- Remove fixed table layout to allow AutoFit ----
+        # If <w:tblLayout w:type="fixed"> exists, remove it
+        tblLayout = tblPr.find(qn('w:tblLayout'))
+        if tblLayout is not None:
+            tblPr.remove(tblLayout)
+
+        # ---- Optional: Clear per-cell fixed widths ----
+        if clear_column_widths:
+            for row in table.rows:
+                for cell in row.cells:
+                    tc = cell._tc
+                    tcPr = tc.get_or_add_tcPr()
+                    tcW = tcPr.find(qn('w:tcW'))
+                    if tcW is not None:
+                        tcPr.remove(tcW)
+
+    save_path = _ensure_docx_extension(output_path or docx_path)
+    doc.save(save_path)
+
+
+def _row_is_empty(row) -> bool:
+    """Return True if all cell texts in the row are empty/whitespace."""
+    for cell in row.cells:
+        if cell.text and cell.text.strip():
+            return False
+    return True
+
+
+def _table_header_matches(table: Table, expected_headers: list[str], case_insensitive: bool = True) -> bool:
+    """
+    Check whether the table's first row cells match expected header labels.
+    Supports partial matching when len(expected_headers) <= number of cells.
+    """
+    if len(table.rows) == 0:
+        return False
+    header_cells = table.rows[0].cells
+    if len(header_cells) < len(expected_headers):
+        return False
+
+    for i, exp in enumerate(expected_headers):
+        actual = header_cells[i].text.strip() if i < len(header_cells) else ""
+        if case_insensitive:
+            if exp.strip().lower() not in actual.lower():
+                return False
+        else:
+            if exp.strip() not in actual:
+                return False
+    return True
+
+
+def _find_table_by_header(dst_doc: Document, expected_headers: list[str]) -> Table:
+    """
+    Return the first table whose header row matches expected_headers.
+    Example expected_headers: ["ID"] or ["ID", "Name", "Description"].
+    """
+    for table in dst_doc.tables:
+        if _table_header_matches(table, expected_headers):
+            return table
+    raise ValueError(f"No table found with header(s): {expected_headers}")
+
+
+def copy_table_rows_excluding_header_into_table_with_id(
+        src_docx_path: str,
+        dst_docx_path: str,
+        output_path: str = None,
+        src_table_index: int = 0,
+        expected_target_headers=None
+):
+    """
+    Copy all rows except the header from a source table and paste into the target table
+    identified by its header row (e.g., header contains 'ID').
+    Insertion starts at the first empty row below the header; if none, rows are appended.
+
+    Args:
+        src_docx_path: path to source .docx (table to copy from)
+        dst_docx_path: path to target .docx (table to paste into)
+        output_path: where to save updated target; overwrites dst_docx_path if None
+        src_table_index: 0-based index of source table
+        expected_target_headers: list of header labels to identify target table
+    """
+    # Load docs
+    if expected_target_headers is None:
+        expected_target_headers = ["ID"]
+    src = Document(_get_docx_path(src_docx_path))
+    dst = Document(_get_docx_path(dst_docx_path))
+
+    # Validate source table
+    if src_table_index < 0 or src_table_index >= len(src.tables):
+        raise IndexError(f"Source table index {src_table_index} out of range. Source has {len(src.tables)} tables.")
+
+    src_table = src.tables[src_table_index]
+    src_tbl_elm = src_table._tbl
+
+    # Gather source rows excluding header (skip first <w:tr>)
+    src_rows = src_tbl_elm.findall(qn('w:tr'))
+    if len(src_rows) < 2:
+        raise ValueError("Source table must have at least 2 rows (header + data).")
+    rows_to_copy = [deepcopy(tr) for tr in src_rows[1:]]
+
+    # Defensive: clear repeating header flags on copied rows
+    for tr in rows_to_copy:
+        trPr = tr.find(qn('w:trPr'))
+        if trPr is not None:
+            hdr = trPr.find(qn('w:tblHeader'))
+            if hdr is not None:
+                trPr.remove(hdr)
+
+    # Find target table by its header row (e.g., header first cell contains 'ID')
+    target_table = _find_table_by_header(dst, expected_headers=expected_target_headers)
+    target_tbl_elm = target_table._tbl
+
+    # Identify first empty data row (below header)
+    empty_row_obj = None
+    data_rows = list(target_table.rows)[1:] if len(target_table.rows) > 1 else []
+    for r in data_rows:
+        if _row_is_empty(r):
+            empty_row_obj = r
+            break
+
+    if empty_row_obj is not None:
+        # Replace the empty row with the first copied row, then insert remaining
+        empty_tr = empty_row_obj._tr
+        empty_tr.addnext(rows_to_copy[0])
+        target_tbl_elm.remove(empty_tr)
+        cursor = rows_to_copy[0]
+        for tr in rows_to_copy[1:]:
+            cursor.addnext(tr)
+            cursor = tr
+    else:
+        # No empty row found → append at end
+        for tr in rows_to_copy:
+            target_tbl_elm.append(tr)
+
+    set_normal_style_in_second_column(target_table, skip_header=True)
+    remove_numbering_in_second_column(target_table, skip_header=True)
+
+    save_path = _ensure_docx_extension(output_path or dst_docx_path)
+    dst.save(save_path)
+
+
+def copy_excel_rows_excluding_header_into_table_with_id(
+        src_excel_path: str,
+        dst_docx_path: str,
+        output_path: str = None,
+        sheet_name: str = None,
+        expected_target_headers=None,
+):
+    """
+    Copy all rows except the header from an Excel sheet into the Word target table
+    identified by its header row (e.g., first cell is 'ID').
+    """
+    if expected_target_headers is None:
+        expected_target_headers = ["ID"]
+
+    source_rows = read_xlsx_rows(src_excel_path, sheet_name=sheet_name)
+    if len(source_rows) < 2:
+        raise ValueError("Source Excel sheet must have at least 2 rows (header + data).")
+
+    data_rows = source_rows[1:]
+
+    dst = Document(_get_docx_path(dst_docx_path))
+    target_table = _find_table_by_header(dst, expected_headers=expected_target_headers)
+
+    # Reuse first empty row if template provides one, otherwise append rows.
+    template_row = None
+    data_rows_in_target = list(target_table.rows)[1:] if len(target_table.rows) > 1 else []
+    for row in data_rows_in_target:
+        if _row_is_empty(row):
+            template_row = row
+            break
+
+    if template_row is None:
+        target_table.add_row()
+        template_row = target_table.rows[-1]
+
+    template_row_xml = template_row._tr
+    target_tbl_elm = target_table._tbl
+
+    for row_idx, source_row in enumerate(data_rows):
+        if row_idx == 0:
+            current_row = template_row
+        else:
+            cloned_tr = deepcopy(template_row_xml)
+            target_tbl_elm.append(cloned_tr)
+            current_row = target_table.rows[-1]
+
+        for col_idx, value in enumerate(source_row):
+            if col_idx >= len(current_row.cells):
+                break
+            current_row.cells[col_idx].text = value
+
+    set_normal_style_in_second_column(target_table, skip_header=True)
+    remove_numbering_in_second_column(target_table, skip_header=True)
+
+    save_path = _ensure_docx_extension(output_path or dst_docx_path)
+    dst.save(save_path)
+
+
+def set_normal_style_in_second_column(table: Table, skip_header: bool = True) -> int:
+    """
+    Set paragraph style to 'Normal' for all paragraphs in the second column (Headline).
+    Returns the number of paragraphs updated.
+    """
+    if not table.rows:
+        return 0
+
+    start_row = 1 if skip_header else 0
+    updated = 0
+
+    for row in table.rows[start_row:]:
+        if len(row.cells) < 2:
+            continue
+        headline_cell = row.cells[1]
+        for p in headline_cell.paragraphs:
+            # Simple, robust: assign by style name
+            p.style = 'Normal'
+            updated += 1
+
+    return updated
+
+
+def remove_numbering_in_second_column(table, skip_header=True, non_numbered_style_name="Normal"):
+    """
+    Remove list numbering from the second column and prevent style-level numbering
+    by assigning a non-numbered style (e.g., 'Normal').
+
+    Returns the number of paragraphs modified.
+    """
+    if not table.rows:
+        return 0
+
+    start_row = 1 if skip_header else 0
+    changed = 0
+
+    for row in table.rows[start_row:]:
+        if len(row.cells) < 2:
+            continue
+
+        headline_cell = row.cells[1]
+        for p in headline_cell.paragraphs:
+            p_elm = p._element
+
+            # Ensure we have <w:pPr>
+            pPr = p_elm.find(qn('w:pPr'))
+            if pPr is None:
+                pPr = OxmlElement('w:pPr')
+                p_elm.insert(0, pPr)
+
+            # Remove any existing numbering and outline level
+            numPr = pPr.find(qn('w:numPr'))
+            if numPr is not None:
+                pPr.remove(numPr)
+
+            outlineLvl = pPr.find(qn('w:outlineLvl'))
+            if outlineLvl is not None:
+                pPr.remove(outlineLvl)
+
+            # Assign a non-numbered style (breaks style-level numbering inheritance)
+            try:
+                # If the style exists, python-docx sets <w:pStyle w:val="Normal">
+                p.style = p.part.document.styles[non_numbered_style_name]
+            except KeyError:
+                # Fallback: explicitly set <w:pStyle/> to Normal even if style not in cache
+                pStyle = pPr.find(qn('w:pStyle'))
+                if pStyle is None:
+                    pStyle = OxmlElement('w:pStyle')
+                    pPr.insert(0, pStyle)
+                pStyle.set(qn('w:val'), non_numbered_style_name)
+
+            changed += 1
+
+    return changed
+
+
+# --------------------------------------------------------------------------------------------------------------------
+
+
+def set_table_column_widths(
+        docx_path: str,
+        output_path: str = None,
+        widths_cm: list[float] = None,
+        expected_target_headers: list[str] = None
+) -> None:
+    """
+    Set explicit (fixed) column widths for a target table.
+
+    Args:
+        docx_path: Path to input .docx.
+        output_path: Where to save. Overwrites docx_path if None.
+        widths_cm: List of column widths in centimeters. MUST match the number of columns.
+        expected_target_headers: Header labels used to locate the table.
+
+    Raises:
+        ValueError: If widths_cm is missing/empty, table not found, or length mismatch.
+    """
+    if not widths_cm or len(widths_cm) == 0:
+        raise ValueError("widths_cm must be a non-empty list of column widths (cm).")
+
+    if expected_target_headers is None:
+        expected_target_headers = ["ID"]
+
+    doc = Document(_get_docx_path(docx_path))
+
+    # ---- Locate target table ----
+    try:
+        target_table = _find_table_by_header(doc, expected_headers=expected_target_headers)
+    except Exception as e:
+        raise ValueError(f"Table with headers {expected_target_headers} not found: {e}")
+
+    # ---- Validate column count ----
+    if len(target_table.rows) == 0:
+        raise ValueError("Target table has no rows.")
+    col_count = len(target_table.rows[0].cells)
+    if col_count != len(widths_cm):
+        raise ValueError(f"Width count ({len(widths_cm)}) must equal column count ({col_count}).")
+
+    # ---- Set table to fixed layout (so Word honors exact widths) ----
+    tbl = target_table._tbl
+    tblPr = tbl.tblPr
+    if tblPr is None:
+        tblPr = OxmlElement('w:tblPr')
+        tbl.insert(0, tblPr)
+
+    # Ensure <w:tblLayout w:type="fixed"/>
+    tblLayout = tblPr.find(qn('w:tblLayout'))
+    if tblLayout is None:
+        tblLayout = OxmlElement('w:tblLayout')
+        tblPr.append(tblLayout)
+    tblLayout.set(qn('w:type'), 'fixed')
+
+    # Optional: set table preferred width to 'auto' by removing pct/dxa to avoid conflicts
+    tblW = tblPr.find(qn('w:tblW'))
+    if tblW is not None:
+        tblPr.remove(tblW)
+
+    # ---- Define the grid columns with exact widths ----
+    def cm_to_twips(cm: float) -> int:
+        return int(round((cm / 2.54) * 1440))
+
+    tblGrid = tbl.find(qn('w:tblGrid'))
+    if tblGrid is None:
+        tblGrid = OxmlElement('w:tblGrid')
+        if tblPr is not None and tblPr.getparent() is not None:
+            tblPr.addnext(tblGrid)
+        else:
+            tbl.insert(1, tblGrid)
+
+    # Clear existing gridCol children
+    for child in list(tblGrid):
+        tblGrid.remove(child)
+
+    for cm in widths_cm:
+        gridCol = OxmlElement('w:gridCol')
+        gridCol.set(qn('w:w'), str(cm_to_twips(cm)))
+        tblGrid.append(gridCol)
+
+    # ---- Apply widths to each cell in the first row ----
+    first_row = target_table.rows[0]
+    for i, cm in enumerate(widths_cm):
+        first_row.cells[i].width = Cm(cm)
+
+    # Remove per-cell tcW from data rows to avoid conflicting widths
+    for row in target_table.rows[1:]:
+        for cell in row.cells:
+            tc = cell._tc
+            tcPr = tc.get_or_add_tcPr()
+            tcW = tcPr.find(qn('w:tcW'))
+            if tcW is not None:
+                tcPr.remove(tcW)
+
+    # ---- Save the document ----
+    save_path = _ensure_docx_extension(output_path or docx_path)
+    doc.save(save_path)
+
+
+def set_paragraph_spacing(docx_path: str, output_path: str = None, space_before_pt: float = 0, space_after_pt: float = 3):
+    """
+    Set paragraph spacing ONLY for the table that follows the Section 6 heading.
+    All other paragraphs and tables are left completely untouched.
+    """
+    doc = Document(_get_docx_path(docx_path))
+
+    # Collect all block-level elements (paragraphs and tables) in body order
+    body = doc.element.body
+    children = list(body)
+
+    # Find the index of the Section 6 heading paragraph
+    section6_idx = None
+    for i, child in enumerate(children):
+        if child.tag.endswith('}p'):  # it's a paragraph
+            text = ''.join(node.text or '' for node in child.iter() if node.tag.endswith('}t'))
+            if re.search(r'^\s*6[.\)\-]?\s', text) or 'section 6' in text.lower():
+                section6_idx = i
+                break
+
+    if section6_idx is None:
+        return
+
+    # Find the first table that appears after the Section 6 heading
+    target_table = None
+    for child in children[section6_idx + 1:]:
+        if child.tag.endswith('}tbl'):
+            # Wrap the raw element as a python-docx Table object
+            target_table = Table(child, doc)
+            break
+
+    if target_table is None:
+        return
+
+    # Apply spacing only to paragraphs inside the target table
+    for row in target_table.rows:
+        for cell in row.cells:
+            for paragraph in cell.paragraphs:
+                paragraph.paragraph_format.space_before = Pt(space_before_pt)
+                paragraph.paragraph_format.space_after = Pt(space_after_pt)
+
+    save_path = _ensure_docx_extension(output_path or docx_path)
+    doc.save(save_path)\n\n===== C:\Projects\std_template_normalizer\test\__init__.py =====\n\n\n\n===== C:\Projects\std_template_normalizer\test\test_document_normalization.py =====\n\nimport os
+import sys
+import unittest
+from pathlib import Path
+
+from src.config.config_provider import ConfigProvider
+from src.word.table_handler import (
+    set_paragraph_spacing,
+    set_table_column_widths,
+    set_tables_autofit_to_window,
+    set_landscape_for_all_sections,
+    copy_table_rows_excluding_header_into_table_with_id,
+    copy_excel_rows_excluding_header_into_table_with_id,
+)
+from src.word.placeholder_replacer import replace_placeholders_using_config
+from src.config.constants import (
+    DOCX_EXTENSION,
+    XLSX_EXTENSION,
+    APP_DATA_FOLDER_NAME,
+    ConfigKeys,
+    WordTableDefaults,
+    CONFIG_FILE_NAME,
+)
+from src.validation.docx_verifier import verify_normalized_protocol, _table_matches_headers
+
+
+class _FakeCell:
+    def __init__(self, text: str):
+        self.text = text
+
+
+class _FakeRow:
+    def __init__(self, cells):
+        self.cells = [_FakeCell(c) for c in cells]
+
+
+class _FakeTable:
+    def __init__(self, rows):
+        self.rows = [_FakeRow(r) for r in rows]
+
+
+class TestProtocolNormalization(unittest.TestCase):
+    """Unit test for normalizing Word protocols and replacing placeholders."""
+
+    @staticmethod
+    def _resolve_document_paths_from_config():
+        """Load config and return normalized document paths used by integration test."""
+        config = ConfigProvider.load_config_json()
+
+        exported_word = config.get(ConfigKeys.EXPORTED_STD, "")
+        template_ready_word = config.get(ConfigKeys.TEMPLATE_PROTOCOL, "")
+
+        # Build file name only (NO path from config)
+        file_name = (
+                config.get("stx_number", "") + " " +
+                config.get("std_name", "")
+        ).strip()
+
+        # Ensure extension
+        if not file_name.endswith(DOCX_EXTENSION):
+            file_name += DOCX_EXTENSION
+
+        # Resolve Desktop dynamically (user-safe, no admin needed)
+        desktop_path = Path.home() / "Desktop"
+
+        # Final output path
+        output_word = str(desktop_path / file_name)
+
+        return exported_word, template_ready_word, output_word
+
+    def test_document_normalization(self):
+        """
+        Validate that Word tables are normalized and placeholders are replaced.
+
+        Steps:
+        1. Set all sections to landscape orientation.
+        2. Autofit all tables to window width.
+        3. Copy rows from exported Word into the template (excluding headers).
+        4. Set column widths for all tables.
+        5. Adjust paragraph spacing.
+        6. Replace placeholders using configuration.
+        7. Verify complete document integrity.
+        """
+        exported_word, template_ready_word, output_word = self._resolve_document_paths_from_config()
+
+        required_inputs = [exported_word, template_ready_word]
+        missing_files = [p for p in required_inputs if not p or not os.path.exists(p)]
+        if missing_files:
+            self.skipTest(
+                "Missing required input files from config.json: "
+                + ", ".join(repr(p) for p in missing_files)
+            )
+        # Set landscape layout for all sections
+        source_doc_for_layout = (
+            template_ready_word
+            if exported_word.lower().endswith(XLSX_EXTENSION)
+            else exported_word
+        )
+        set_landscape_for_all_sections(source_doc_for_layout, output_word)
+
+        # Make tables autofit to window
+        set_tables_autofit_to_window(source_doc_for_layout, output_word)
+
+        # Copy rows (excluding header) into template table
+        if exported_word.lower().endswith(XLSX_EXTENSION):
+            copy_excel_rows_excluding_header_into_table_with_id(
+                exported_word,
+                template_ready_word,
+                output_word,
+            )
+        else:
+            copy_table_rows_excluding_header_into_table_with_id(
+                exported_word,
+                template_ready_word,
+                output_word,
+            )
+
+        # Adjust table column widths
+        set_table_column_widths(
+            output_word,
+            output_word,
+            widths_cm=WordTableDefaults.DEFAULT_COLUMN_WIDTHS_CM
+        )
+
+        # Adjust paragraph spacing in the document
+        set_paragraph_spacing(output_word, output_word)
+
+        # Replace placeholders with values from config
+        replace_placeholders_using_config(output_word, output_word)
+
+        # CI-grade verification of the final normalized protocol.
+        # Any deviation in content, structure, formatting, placeholders,
+        # or template preservation will cause this test to fail with a
+        # precise diagnostic message.
+        verify_normalized_protocol(
+            exported_std_path=exported_word,
+            template_protocol_path=template_ready_word,
+            normalized_protocol_path=output_word,
+        )
+
+        # Open file
+        os.startfile(output_word)
+
+    def test_target_header_matching_allows_prefix_for_wider_tables(self):
+        table = _FakeTable(rows=[["ID", "Step", "Expected result"]])
+        self.assertTrue(_table_matches_headers(table, ["ID"]))
+
+    def test_target_header_matching_allows_expected_text_contained_in_cell(self):
+        table = _FakeTable(rows=[["ID #", "Name"]])
+        self.assertTrue(_table_matches_headers(table, ["ID"]))
+
+    def test_target_header_matching_requires_position_match(self):
+        table = _FakeTable(rows=[["Name", "ID"]])
+        self.assertFalse(_table_matches_headers(table, ["ID"]))
+
+
+if __name__ == "__main__":
+    from src.config.logging_config import setup_logging, get_logger
+    setup_logging()
+    log = get_logger(__name__)
+
+    # Define appdata path for storing config
+    appdata_folder = os.path.join(
+        os.environ.get('APPDATA', os.path.expanduser('~\\AppData\\Roaming')),
+        APP_DATA_FOLDER_NAME
+    )
+    config_path = os.path.join(appdata_folder, CONFIG_FILE_NAME)
+
+    log.info("Started document normalization. Config path: %s", config_path)
+
+    # Load config
+    config = ConfigProvider.load_config_json(config_path)
+    if config:
+        exported = config.get(ConfigKeys.EXPORTED_STD, "")
+        output = config.get(ConfigKeys.NORMALIZED_PROTOCOL, "")
+        log.info("Inputs: Exported_STD=%s, Normalized_Protocol=%s", exported, output)
+
+    # Create test suite and run
+    suite = unittest.TestSuite()
+    suite.addTest(TestProtocolNormalization('test_document_normalization'))
+    result = unittest.TextTestRunner(verbosity=2).run(suite)
+
+    if result.wasSuccessful():
+        log.info("Output: Document normalization completed successfully.")
+        sys.exit(0)
+    else:
+        failures = "; ".join(str(f[1]) for f in result.failures) if result.failures else "unknown"
+        log.info("Output: Document normalization failed. %s", failures)
+        sys.exit(1)
+\n

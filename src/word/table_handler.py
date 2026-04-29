@@ -30,6 +30,8 @@ def _get_docx_path(path: str) -> str:
     return path + '.docx'
 
 
+from pathlib import Path
+
 def set_landscape_for_all_sections(docx_path: str, output_path: str = None):
     """
     Force all sections to Landscape without toggling.
@@ -47,8 +49,11 @@ def set_landscape_for_all_sections(docx_path: str, output_path: str = None):
             section.page_width, section.page_height = section.page_height, section.page_width
 
     save_path = _ensure_docx_extension(output_path or docx_path)
-    document.save(save_path)
 
+    # Ensure the target folder exists before saving
+    Path(save_path).parent.mkdir(parents=True, exist_ok=True)
+
+    document.save(save_path)
 
 def set_tables_autofit_to_window(docx_path: str, output_path: str = None, clear_column_widths: bool = True):
     """
@@ -99,6 +104,7 @@ def set_tables_autofit_to_window(docx_path: str, output_path: str = None, clear_
                         tcPr.remove(tcW)
 
     save_path = _ensure_docx_extension(output_path or docx_path)
+    Path(save_path).parent.mkdir(parents=True, exist_ok=True)
     doc.save(save_path)
 
 
@@ -219,6 +225,7 @@ def copy_table_rows_excluding_header_into_table_with_id(
     remove_numbering_in_second_column(target_table, skip_header=True)
 
     save_path = _ensure_docx_extension(output_path or dst_docx_path)
+    Path(save_path).parent.mkdir(parents=True, exist_ok=True)
     dst.save(save_path)
 
 
@@ -277,6 +284,7 @@ def copy_excel_rows_excluding_header_into_table_with_id(
     remove_numbering_in_second_column(target_table, skip_header=True)
 
     save_path = _ensure_docx_extension(output_path or dst_docx_path)
+    Path(save_path).parent.mkdir(parents=True, exist_ok=True)
     dst.save(save_path)
 
 
@@ -454,6 +462,7 @@ def set_table_column_widths(
 
     # ---- Save the document ----
     save_path = _ensure_docx_extension(output_path or docx_path)
+    Path(save_path).parent.mkdir(parents=True, exist_ok=True)
     doc.save(save_path)
 
 
@@ -499,4 +508,5 @@ def set_paragraph_spacing(docx_path: str, output_path: str = None, space_before_
                 paragraph.paragraph_format.space_after = Pt(space_after_pt)
 
     save_path = _ensure_docx_extension(output_path or docx_path)
+    Path(save_path).parent.mkdir(parents=True, exist_ok=True)
     doc.save(save_path)
