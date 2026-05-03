@@ -54,7 +54,14 @@ class TestProtocolNormalization(unittest.TestCase):
         output_word = config.get(ConfigKeys.NORMALIZED_PROTOCOL, "").strip()
         if not output_word:
             desktop_dir = str(Path.home() / "Desktop")
-            output_word = os.path.join(desktop_dir, "Normalized_protocol")
+            stx_number = config.get(ConfigKeys.STX_NUMBER, "").strip()
+            std_name = config.get(ConfigKeys.STD_NAME, "").strip()
+            file_stem = f"{stx_number} {std_name}".strip()
+            file_stem = " ".join(file_stem.split())
+            file_stem = ''.join(ch for ch in file_stem if ch not in '<>:"/\\|?*').rstrip('.')
+            if not file_stem:
+                file_stem = "Normalized_protocol"
+            output_word = os.path.join(desktop_dir, file_stem)
 
         if not output_word.endswith(DOCX_EXTENSION):
             output_word += DOCX_EXTENSION
@@ -102,7 +109,7 @@ class TestProtocolNormalization(unittest.TestCase):
         set_landscape_for_all_sections(output_word, output_word)
 
         # Make tables autofit to window
-        set_tables_autofit_to_window(output_word, output_word)
+        set_tables_autofit_to_window(output_word, output_word, expected_target_headers=["ID"])
 
 
         # Adjust table column widths

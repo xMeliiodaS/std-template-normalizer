@@ -55,7 +55,12 @@ def set_landscape_for_all_sections(docx_path: str, output_path: str = None):
 
     document.save(save_path)
 
-def set_tables_autofit_to_window(docx_path: str, output_path: str = None, clear_column_widths: bool = True):
+def set_tables_autofit_to_window(
+        docx_path: str,
+        output_path: str = None,
+        clear_column_widths: bool = True,
+        expected_target_headers: list[str] | None = None,
+):
     """
     Applies Word's 'Layout -> AutoFit -> AutoFit to Window' to all tables in a .docx:
       - Set table preferred width to 100% (pct=5000, meaning 100%).
@@ -69,7 +74,11 @@ def set_tables_autofit_to_window(docx_path: str, output_path: str = None, clear_
     """
     doc = Document(_get_docx_path(docx_path))
 
-    for table in doc.tables:
+    tables_to_update = doc.tables
+    if expected_target_headers:
+        tables_to_update = [_find_table_by_header(doc, expected_headers=expected_target_headers)]
+
+    for table in tables_to_update:
         tbl = table._tbl  # <w:tbl>
         tblPr = tbl.tblPr
         if tblPr is None:
