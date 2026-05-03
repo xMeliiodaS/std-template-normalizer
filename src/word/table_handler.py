@@ -477,8 +477,9 @@ def set_table_column_widths(
 
 def set_paragraph_spacing(docx_path: str, output_path: str = None, space_before_pt: float = 0, space_after_pt: float = 3):
     """
-    Set paragraph spacing ONLY for the table that follows the Section 6 heading.
-    All other paragraphs and tables are left completely untouched.
+    Set paragraph spacing for the table that follows the Section 6 heading.
+    Also remove empty spacer paragraphs between the heading and that table,
+    which can otherwise force an unwanted blank page before the table.
     """
     doc = Document(_get_docx_path(docx_path))
 
@@ -500,14 +501,31 @@ def set_paragraph_spacing(docx_path: str, output_path: str = None, space_before_
 
     # Find the first table that appears after the Section 6 heading
     target_table = None
-    for child in children[section6_idx + 1:]:
+    target_table_idx = None
+    for i in range(section6_idx + 1, len(children)):
+        child = children[i]
         if child.tag.endswith('}tbl'):
+            target_table_idx = i
             # Wrap the raw element as a python-docx Table object
             target_table = Table(child, doc)
             break
 
     if target_table is None:
         return
+
+    # Remove empty paragraph blocks between Section 6 and the table.
+    # These are usually accidental spacer paragraphs / manual breaks that
+    # can create a large blank gap or a fully blank page before the table.
+    if target_table_idx is not None:
+        for child in children[section6_idx + 1:target_table_idx]:
+            if not child.tag.endswith('}p'):
+                continue
+            text = ''.join(node.text or '' for node in child.iter() if node.tag.endswith('}t')).strip()
+            has_drawings = any(node.tag.endswith('}drawing') for node in child.iter())
+            if text == '' and not has_drawings:
+                parent = child.getparent()
+                if parent is not None:
+                    parent.remove(child)
 
     # Apply spacing only to paragraphs inside the target table
     for row in target_table.rows:
