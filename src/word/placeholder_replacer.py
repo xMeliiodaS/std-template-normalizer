@@ -5,6 +5,7 @@ from src.config.config_provider import ConfigProvider
 from src.config.constants import DOCX_EXTENSION, WordPlaceholders, ConfigKeys
 from src.config.logging_config import get_logger
 import re
+from pathlib import Path
 
 logger = get_logger(__name__)
 
@@ -228,5 +229,8 @@ def replace_placeholders_using_config(docx_path, output_path=None):
             replace_text_in_table(table, {"TO_BE_DELETED_ROW": ""})
 
     # Save document
-    doc.save(output_path or docx_path)
+    # Save document
+    save_path = output_path or docx_path
+    Path(save_path).parent.mkdir(parents=True, exist_ok=True)
+    doc.save(save_path)
     logger.info("Output: Placeholders replaced successfully.")

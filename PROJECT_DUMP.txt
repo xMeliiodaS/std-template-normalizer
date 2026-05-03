@@ -1,4 +1,10 @@
-\n===== C:\Projects\std_template_normalizer\src\__init__.py =====\n\n\n\n===== C:\Projects\std_template_normalizer\src\config\config_provider.py =====\n\nimport os
+﻿
+===== C:\Projects\std_template_normalizer\src\__init__.py =====
+
+
+===== C:\Projects\std_template_normalizer\src\config\config_provider.py =====
+
+import os
 import json
 import shutil
 
@@ -64,7 +70,11 @@ class ConfigProvider:
         except Exception as e:
             logger.exception("Error reading %s: %s", CONFIG_FILE_NAME, e)
             return {}
-\n\n===== C:\Projects\std_template_normalizer\src\config\constants.py =====\n\n"""
+
+
+===== C:\Projects\std_template_normalizer\src\config\constants.py =====
+
+"""
 Constants module for the VSTS Azure Automation project.
 Centralizes all hardcoded values to improve maintainability and clean code practices.
 """
@@ -98,12 +108,12 @@ class ConfigKeys:
     DOC_TYPE = "doc_type"
     DOC_STX = "doc_stx"
     DOC_RECORD = "doc_record"
-    PROTOCOL_NUMBER = "protocol_number"   # → ADD_PROTOCOL_NUMBER#
-    STD_NAME = "std_name"                 # → ADD_STD_NAME
-    REPORT_NUMBER = "report_number"       # → ADD_REPORT_NUMBER
-    TEST_PLAN = "test_plan"               # → ADD_PLAN_NUMBER
-    STX_NUMBER = "stx_number"             # → ADD_STX_NUMBER
-    PREPARED_BY = "prepared_by"           # → ADD_PREPARED_BY
+    PROTOCOL_NUMBER = "protocol_number"   # â†’ ADD_PROTOCOL_NUMBER#
+    STD_NAME = "std_name"                 # â†’ ADD_STD_NAME
+    REPORT_NUMBER = "report_number"       # â†’ ADD_REPORT_NUMBER
+    TEST_PLAN = "test_plan"               # â†’ ADD_PLAN_NUMBER
+    STX_NUMBER = "stx_number"             # â†’ ADD_STX_NUMBER
+    PREPARED_BY = "prepared_by"           # â†’ ADD_PREPARED_BY
     # Legacy / optional
     FOOTER = "footer"
     TEST_PROTOCOL = "test_plan"
@@ -129,9 +139,9 @@ class ConfigKeys:
 class WordPlaceholders:
     """Word placeholder tokens. Field (C#) = config key = placeholder name."""
 
-    DOC_TYPE = "ADD_DOC_TYPE"              # doc_type → Design / Report
-    DOC_TYPE_STx = "ADD_DOC_STX"           # doc_type → STD / STR
-    DOC_RECORD = "ADD_DOC_RECORD"          # doc_type → Protocol / Report
+    DOC_TYPE = "ADD_DOC_TYPE"              # doc_type â†’ Design / Report
+    DOC_TYPE_STx = "ADD_DOC_STX"           # doc_type â†’ STD / STR
+    DOC_RECORD = "ADD_DOC_RECORD"          # doc_type â†’ Protocol / Report
 
     PROTOCOL_NUMBER = "ADD_PROTOCOL_NUMBER#"   # protocol_number
     REPORT_NUMBER = "ADD_REPORT_NUMBER"        # report_number
@@ -231,7 +241,11 @@ class ProcessMarkers:
     PROGRESS_TOTAL = "PROGRESS_TOTAL:"
     PROGRESS = "PROGRESS:"
     PROCESS_FINISHED = "PROCESS_FINISHED"
-\n\n===== C:\Projects\std_template_normalizer\src\config\logging_config.py =====\n\n"""
+
+
+===== C:\Projects\std_template_normalizer\src\config\logging_config.py =====
+
+"""
 Centralized logging for std-template-normalizer.
 Writes to the same log file as the C# app: %APPDATA%\\ste_tool_studio\\ste_tool_studio.log
 Use get_logger(__name__) in modules.
@@ -298,7 +312,14 @@ def get_logger(name: str):
     """Return a logger for the given module name. Calls setup_logging() on first use."""
     setup_logging()
     return logging.getLogger(name)
-\n\n===== C:\Projects\std_template_normalizer\src\excel\__init__.py =====\n\n\n\n===== C:\Projects\std_template_normalizer\src\excel\xlsx_reader.py =====\n\nfrom __future__ import annotations
+
+
+===== C:\Projects\std_template_normalizer\src\excel\__init__.py =====
+
+
+===== C:\Projects\std_template_normalizer\src\excel\xlsx_reader.py =====
+
+from __future__ import annotations
 
 from pathlib import Path
 from typing import List, Optional
@@ -393,7 +414,11 @@ def read_xlsx_rows(path: str, sheet_name: Optional[str] = None) -> List[List[str
             row_values[idx] = value
         matrix.append(row_values)
     return matrix
-\n\n===== C:\Projects\std_template_normalizer\src\validation\docx_verifier.py =====\n\nfrom __future__ import annotations
+
+
+===== C:\Projects\std_template_normalizer\src\validation\docx_verifier.py =====
+
+from __future__ import annotations
 
 from dataclasses import dataclass
 from typing import List, Dict, Optional, Tuple, Iterable
@@ -506,7 +531,7 @@ def _normalize_text(text: str) -> str:
     """
     Semantic text normalisation:
     - Strip leading/trailing whitespace
-    - Collapse internal whitespace (incl. non‑breaking) to single spaces
+    - Collapse internal whitespace (incl. nonâ€‘breaking) to single spaces
     """
     if text is None:
         return ""
@@ -543,7 +568,7 @@ def _cell_logical_text(cell: _Cell) -> str:
 def _has_merged_cells(table: Table) -> bool:
     """
     Detect merged cells via gridSpan (horizontal) or vMerge (vertical).
-    Any presence means the table is structurally unsafe for naïve row/column comparison.
+    Any presence means the table is structurally unsafe for naÃ¯ve row/column comparison.
     """
     for row in table._tbl.tr_lst:
         for tc in row.tc_lst:
@@ -630,7 +655,7 @@ def _get_placeholder_replacements() -> Dict[str, str]:
     """Get all placeholder replacements from config including doc_type overrides."""
     config = ConfigProvider.load_config_json()
 
-    # Config key = C# field name → Word placeholder
+    # Config key = C# field name â†’ Word placeholder
     protocol_number = config.get(ConfigKeys.PROTOCOL_NUMBER) or config.get(ConfigKeys.LEGACY_KEYS["DOC_STD"]) or ""
     stx_number = config.get(ConfigKeys.STX_NUMBER) or config.get(ConfigKeys.LEGACY_KEYS["STX_NUMBER"]) or ""
     protocol_number_display = (
@@ -1209,7 +1234,11 @@ def verify_normalized_protocol(
         report.raise_if_failed()
 
     return report
-\n\n===== C:\Projects\std_template_normalizer\src\word\placeholder_replacer.py =====\n\nimport os
+
+
+===== C:\Projects\std_template_normalizer\src\word\placeholder_replacer.py =====
+
+import os
 from docx import Document
 from docx.table import Table
 from src.config.config_provider import ConfigProvider
@@ -1371,7 +1400,7 @@ def replace_placeholders_using_config(docx_path, output_path=None):
 
     doc = Document(docx_path)
 
-    # Values from C# Template Normalizer (config key = field name → Word placeholder)
+    # Values from C# Template Normalizer (config key = field name â†’ Word placeholder)
     protocol_number = config.get(ConfigKeys.PROTOCOL_NUMBER) or config.get(ConfigKeys.LEGACY_KEYS["DOC_STD"]) or ""
     stx_number = config.get(ConfigKeys.STX_NUMBER) or config.get(ConfigKeys.LEGACY_KEYS["STX_NUMBER"]) or ""
     stx_number = f"({stx_number})"
@@ -1441,7 +1470,11 @@ def replace_placeholders_using_config(docx_path, output_path=None):
     # Save document
     doc.save(output_path or docx_path)
     logger.info("Output: Placeholders replaced successfully.")
-\n\n===== C:\Projects\std_template_normalizer\src\word\table_handler.py =====\n\nfrom copy import deepcopy
+
+
+===== C:\Projects\std_template_normalizer\src\word\table_handler.py =====
+
+from copy import deepcopy
 import os
 import re
 from docx import Document
@@ -1473,6 +1506,8 @@ def _get_docx_path(path: str) -> str:
     return path + '.docx'
 
 
+from pathlib import Path
+
 def set_landscape_for_all_sections(docx_path: str, output_path: str = None):
     """
     Force all sections to Landscape without toggling.
@@ -1490,8 +1525,11 @@ def set_landscape_for_all_sections(docx_path: str, output_path: str = None):
             section.page_width, section.page_height = section.page_height, section.page_width
 
     save_path = _ensure_docx_extension(output_path or docx_path)
-    document.save(save_path)
 
+    # Ensure the target folder exists before saving
+    Path(save_path).parent.mkdir(parents=True, exist_ok=True)
+
+    document.save(save_path)
 
 def set_tables_autofit_to_window(docx_path: str, output_path: str = None, clear_column_widths: bool = True):
     """
@@ -1542,6 +1580,7 @@ def set_tables_autofit_to_window(docx_path: str, output_path: str = None, clear_
                         tcPr.remove(tcW)
 
     save_path = _ensure_docx_extension(output_path or docx_path)
+    Path(save_path).parent.mkdir(parents=True, exist_ok=True)
     doc.save(save_path)
 
 
@@ -1654,7 +1693,7 @@ def copy_table_rows_excluding_header_into_table_with_id(
             cursor.addnext(tr)
             cursor = tr
     else:
-        # No empty row found → append at end
+        # No empty row found â†’ append at end
         for tr in rows_to_copy:
             target_tbl_elm.append(tr)
 
@@ -1662,6 +1701,7 @@ def copy_table_rows_excluding_header_into_table_with_id(
     remove_numbering_in_second_column(target_table, skip_header=True)
 
     save_path = _ensure_docx_extension(output_path or dst_docx_path)
+    Path(save_path).parent.mkdir(parents=True, exist_ok=True)
     dst.save(save_path)
 
 
@@ -1720,6 +1760,7 @@ def copy_excel_rows_excluding_header_into_table_with_id(
     remove_numbering_in_second_column(target_table, skip_header=True)
 
     save_path = _ensure_docx_extension(output_path or dst_docx_path)
+    Path(save_path).parent.mkdir(parents=True, exist_ok=True)
     dst.save(save_path)
 
 
@@ -1897,6 +1938,7 @@ def set_table_column_widths(
 
     # ---- Save the document ----
     save_path = _ensure_docx_extension(output_path or docx_path)
+    Path(save_path).parent.mkdir(parents=True, exist_ok=True)
     doc.save(save_path)
 
 
@@ -1942,7 +1984,15 @@ def set_paragraph_spacing(docx_path: str, output_path: str = None, space_before_
                 paragraph.paragraph_format.space_after = Pt(space_after_pt)
 
     save_path = _ensure_docx_extension(output_path or docx_path)
-    doc.save(save_path)\n\n===== C:\Projects\std_template_normalizer\test\__init__.py =====\n\n\n\n===== C:\Projects\std_template_normalizer\test\test_document_normalization.py =====\n\nimport os
+    Path(save_path).parent.mkdir(parents=True, exist_ok=True)
+    doc.save(save_path)
+
+===== C:\Projects\std_template_normalizer\test\__init__.py =====
+
+
+===== C:\Projects\std_template_normalizer\test\test_document_normalization.py =====
+
+import os
 import sys
 import unittest
 from pathlib import Path
@@ -1995,20 +2045,12 @@ class TestProtocolNormalization(unittest.TestCase):
         template_ready_word = config.get(ConfigKeys.TEMPLATE_PROTOCOL, "")
 
         # Build file name only (NO path from config)
-        file_name = (
-                config.get("stx_number", "") + " " +
-                config.get("std_name", "")
-        ).strip()
+        output_word = config.get(ConfigKeys.NORMALIZED_PROTOCOL, "").strip()
+        if not output_word:
+            raise ValueError("Missing Normalized_protocol in config.json")
 
-        # Ensure extension
-        if not file_name.endswith(DOCX_EXTENSION):
-            file_name += DOCX_EXTENSION
-
-        # Resolve Desktop dynamically (user-safe, no admin needed)
-        desktop_path = Path.home() / "Desktop"
-
-        # Final output path
-        output_word = str(desktop_path / file_name)
+        if not output_word.endswith(DOCX_EXTENSION):
+            output_word += DOCX_EXTENSION
 
         return exported_word, template_ready_word, output_word
 
@@ -2131,4 +2173,4 @@ if __name__ == "__main__":
         failures = "; ".join(str(f[1]) for f in result.failures) if result.failures else "unknown"
         log.info("Output: Document normalization failed. %s", failures)
         sys.exit(1)
-\n
+

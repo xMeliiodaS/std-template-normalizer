@@ -83,17 +83,7 @@ class TestProtocolNormalization(unittest.TestCase):
                 + ", ".join(repr(p) for p in missing_files)
             )
         # Set landscape layout for all sections
-        source_doc_for_layout = (
-            template_ready_word
-            if exported_word.lower().endswith(XLSX_EXTENSION)
-            else exported_word
-        )
-        set_landscape_for_all_sections(source_doc_for_layout, output_word)
-
-        # Make tables autofit to window
-        set_tables_autofit_to_window(source_doc_for_layout, output_word)
-
-        # Copy rows (excluding header) into template table
+        # Copy rows (excluding header) into template table and create the output document first
         if exported_word.lower().endswith(XLSX_EXTENSION):
             copy_excel_rows_excluding_header_into_table_with_id(
                 exported_word,
@@ -106,6 +96,13 @@ class TestProtocolNormalization(unittest.TestCase):
                 template_ready_word,
                 output_word,
             )
+
+        # From this point forward, normalize the generated output document in-place
+        set_landscape_for_all_sections(output_word, output_word)
+
+        # Make tables autofit to window
+        set_tables_autofit_to_window(output_word, output_word)
+
 
         # Adjust table column widths
         set_table_column_widths(
