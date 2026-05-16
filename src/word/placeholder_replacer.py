@@ -141,6 +141,14 @@ def delete_rows_with_marker(table, marker: str):
         tbl = row._element.getparent()
         tbl.remove(row._element)
 
+def _delete_paragraphs_containing_all(doc, markers: list):
+    """Delete body paragraphs whose text contains ALL specified markers."""
+    for paragraph in list(doc.paragraphs):
+        text = paragraph.text or ""
+        if all(marker in text for marker in markers):
+            p_element = paragraph._element
+            p_element.getparent().remove(p_element)
+
 
 def replace_placeholders_using_config(docx_path, output_path=None):
     config = ConfigProvider.load_config_json()
@@ -161,11 +169,18 @@ def replace_placeholders_using_config(docx_path, output_path=None):
 
     doc = Document(docx_path)
 
-    # Values from C# Template Normalizer (config key = field name → Word placeholder)
+    # Values from C# Template Normalizer (config key = field name -> Word placeholder)
     protocol_number = config.get(ConfigKeys.PROTOCOL_NUMBER) or config.get(ConfigKeys.LEGACY_KEYS["DOC_STD"]) or ""
     stx_number = config.get(ConfigKeys.STX_NUMBER) or config.get(ConfigKeys.LEGACY_KEYS["STX_NUMBER"]) or ""
-    stx_number = f"({stx_number})"
-    protocol_number_display = f"{protocol_number}"
+
+    # FIX #1: Build protocol_number_display identically to the verifier
+    protocol_number_display = (
+        f"{protocol_number} ({stx_number})".strip()
+        if (protocol_number and stx_number)
+        else (protocol_number or stx_number)
+    )
+    stx_number_display = f"({stx_number})" if stx_number else ""
+
     std_name = config.get(ConfigKeys.STD_NAME) or config.get(ConfigKeys.LEGACY_KEYS["STD_NAME"]) or ""
     report_number = config.get(ConfigKeys.REPORT_NUMBER) or config.get(ConfigKeys.LEGACY_KEYS["REPORT_NUMBER"]) or ""
     test_plan = config.get(ConfigKeys.TEST_PLAN) or config.get(ConfigKeys.LEGACY_KEYS["PLAN_NUMBER"]) or ""
@@ -174,8 +189,6 @@ def replace_placeholders_using_config(docx_path, output_path=None):
 
     is_report = (config.get(ConfigKeys.DOC_TYPE) or "").strip().lower() == "report"
 
-    add_doc_std_value = report_number if is_report else protocol_number_display
-
     replacements = {
         WordPlaceholders.DOC_TYPE: config.get(ConfigKeys.DOC_TYPE) or config.get(
             ConfigKeys.LEGACY_KEYS["DOC_TYPE"]) or "",
@@ -183,16 +196,15 @@ def replace_placeholders_using_config(docx_path, output_path=None):
             ConfigKeys.LEGACY_KEYS["DOC_TYPE_STX"]) or "",
         WordPlaceholders.DOC_RECORD: config.get(ConfigKeys.DOC_RECORD) or config.get(
             ConfigKeys.LEGACY_KEYS["DOC_RECORD"]) or "",
-        WordPlaceholders.PROTOCOL_NUMBER: protocol_number_display,
+        WordPlaceholders.PROTOCOL_NUMBER: protocol_number,
         WordPlaceholders.REPORT_NUMBER: report_number,
         WordPlaceholders.STD_NAME: std_name,
         WordPlaceholders.PLAN_NUMBER: test_plan,
-        WordPlaceholders.STX_NUMBER: stx_number,
+        WordPlaceholders.STX_NUMBER: stx_number_display,     # FIX #1: Matches verifier format
         WordPlaceholders.PREPARED_BY: prepared_by,
         WordPlaceholders.FOOTER: footer,
-        # Legacy placeholders (same values)
-
-        "ADD_DOC_STD#": add_doc_std_value,
+        # Legacy placeholders
+        "ADD_DOC_STD#": report_number if is_report else protocol_number
     }
 
     # Override DOC_TYPE, DOC_RECORD, DOC_TYPE_STx when doc_type is "protocol" or "report"
@@ -201,9 +213,15 @@ def replace_placeholders_using_config(docx_path, output_path=None):
     if doc_type_replacements:
         replacements.update(doc_type_replacements)
 
+
+    # ---- Delete protocol-only cover page paragraph ----
+    if not is_report:
+        _delete_paragraphs_containing_all(doc, ["ADD_PROTOCOL_NUMBER#", "ADD_DOC_STX"])
+
     # ---- Body ----
     for paragraph in doc.paragraphs:
         _replace_text_in_paragraph(paragraph, replacements)
+
 
     for table in doc.tables:
         if not is_report:
@@ -225,10 +243,9 @@ def replace_placeholders_using_config(docx_path, output_path=None):
         for table in section.footer.tables:
             replace_text_in_table(table, replacements)
 
-        for table in doc.tables:
-            replace_text_in_table(table, {"TO_BE_DELETED_ROW": ""})
+    for table in doc.tables:
+        replace_text_in_table(table, {"TO_BE_DELETED_ROW": ""})
 
-    # Save document
     # Save document
     save_path = output_path or docx_path
     Path(save_path).parent.mkdir(parents=True, exist_ok=True)

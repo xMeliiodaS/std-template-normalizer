@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import re  # FIX #10: Module-level import instead of inside _normalize_text
 from dataclasses import dataclass
 from typing import List, Dict, Optional, Tuple, Iterable
 
@@ -19,6 +20,9 @@ from src.config.constants import (
 )
 from src.word.placeholder_replacer import get_doc_type_replacements
 from src.word.table_handler import _get_docx_path, _find_table_by_header, _row_is_empty
+
+# FIX #6: Module-level cache for placeholder replacements (reset per verification run)
+_CACHED_REPLACEMENTS = None
 
 
 class VerificationError(AssertionError):
@@ -111,14 +115,10 @@ def _normalize_text(text: str) -> str:
     """
     Semantic text normalisation:
     - Strip leading/trailing whitespace
-    - Collapse internal whitespace (incl. non‑breaking) to single spaces
+    - Collapse internal whitespace (incl. non-breaking) to single spaces
     """
     if text is None:
         return ""
-    # Normalise various whitespace characters that Word commonly uses
-    # (nbsp, tabs, newlines) into single spaces, then collapse.
-    import re
-
     cleaned = (
         text.replace("\u00A0", " ")  # non-breaking space
         .replace("\t", " ")
@@ -132,13 +132,12 @@ def _normalize_text(text: str) -> str:
 def _cell_logical_text(cell: _Cell) -> str:
     """
     Build a logical text representation for a cell:
-    - Preserve paragraph boundaries with '\n'
+    - Preserve paragraph boundaries with newline
     - Concatenate runs within a paragraph
     - Then apply semantic normalisation
     """
     parts: List[str] = []
     for p in cell.paragraphs:
-        # Paragraph.text already concatenates runs, but we prefer explicit control
         p_text = "".join(r.text for r in p.runs) or p.text
         parts.append(p_text or "")
     joined = "\n".join(parts)
@@ -148,15 +147,16 @@ def _cell_logical_text(cell: _Cell) -> str:
 def _has_merged_cells(table: Table) -> bool:
     """
     Detect merged cells via gridSpan (horizontal) or vMerge (vertical).
-    Any presence means the table is structurally unsafe for naïve row/column comparison.
+    Any presence means the table is structurally unsafe for naive row/column comparison.
     """
     for row in table._tbl.tr_lst:
         for tc in row.tc_lst:
             tc_pr = tc.tcPr
             if tc_pr is None:
                 continue
-            grid_span = tc_pr.find(qn(XmlTags.CELL_WIDTH.replace("tcW", "gridSpan")))
-            v_merge = tc_pr.find(qn("w:vMerge"))
+            # FIX #8: Use explicit XmlTags constants instead of string surgery
+            grid_span = tc_pr.find(qn(XmlTags.GRID_SPAN))
+            v_merge = tc_pr.find(qn(XmlTags.V_MERGE))
             if grid_span is not None or v_merge is not None:
                 return True
     return False
@@ -192,12 +192,8 @@ def _collect_excel_matrix(path: str, sheet_name: Optional[str] = None, skip_head
     if not rows:
         return []
 
-    # Determine the maximum column count across all rows
-    # This ensures we don't lose empty columns
     max_cols = max(len(row) for row in rows) if rows else 0
 
-    # Normalize all rows to have the same column count
-    # Fill missing cells with empty strings
     normalized_rows = []
     for row in rows:
         normalized_row = list(row) + [''] * (max_cols - len(row))
@@ -235,11 +231,12 @@ def _get_placeholder_replacements() -> Dict[str, str]:
     """Get all placeholder replacements from config including doc_type overrides."""
     config = ConfigProvider.load_config_json()
 
-    # Config key = C# field name → Word placeholder
     protocol_number = config.get(ConfigKeys.PROTOCOL_NUMBER) or config.get(ConfigKeys.LEGACY_KEYS["DOC_STD"]) or ""
     stx_number = config.get(ConfigKeys.STX_NUMBER) or config.get(ConfigKeys.LEGACY_KEYS["STX_NUMBER"]) or ""
     protocol_number_display = (
-        f"{protocol_number} ({stx_number})".strip() if (protocol_number and stx_number) else (protocol_number or stx_number)
+        f"{protocol_number} ({stx_number})".strip()
+        if (protocol_number and stx_number)
+        else (protocol_number or stx_number)
     )
     std_name = config.get(ConfigKeys.STD_NAME) or config.get(ConfigKeys.LEGACY_KEYS["STD_NAME"]) or ""
     report_number = config.get(ConfigKeys.REPORT_NUMBER) or config.get(ConfigKeys.LEGACY_KEYS["REPORT_NUMBER"]) or ""
@@ -247,18 +244,21 @@ def _get_placeholder_replacements() -> Dict[str, str]:
     prepared_by = config.get(ConfigKeys.PREPARED_BY) or config.get(ConfigKeys.LEGACY_KEYS["PREPARED_BY"]) or ""
     footer = config.get(ConfigKeys.FOOTER) or config.get(ConfigKeys.LEGACY_KEYS["FOOTER"]) or ""
 
+    # FIX #1: Report-aware ADD_DOC_STD# (matches replacer logic)
+    is_report = (config.get(ConfigKeys.DOC_TYPE) or "").strip().lower() == "report"
+
     replacements = {
         WordPlaceholders.DOC_TYPE: config.get(ConfigKeys.DOC_TYPE) or config.get(ConfigKeys.LEGACY_KEYS["DOC_TYPE"]) or "",
         WordPlaceholders.DOC_TYPE_STx: config.get(ConfigKeys.DOC_STX) or config.get(ConfigKeys.LEGACY_KEYS["DOC_TYPE_STX"]) or "",
         WordPlaceholders.DOC_RECORD: config.get(ConfigKeys.DOC_RECORD) or config.get(ConfigKeys.LEGACY_KEYS["DOC_RECORD"]) or "",
-        WordPlaceholders.PROTOCOL_NUMBER: protocol_number_display,
+        WordPlaceholders.PROTOCOL_NUMBER: protocol_number,
         WordPlaceholders.REPORT_NUMBER: report_number,
         WordPlaceholders.STD_NAME: std_name,
         WordPlaceholders.PLAN_NUMBER: test_plan,
-        WordPlaceholders.STX_NUMBER: stx_number,
+        WordPlaceholders.STX_NUMBER: f"({stx_number})" if stx_number else "",  # FIX #1: Matches replacer format
         WordPlaceholders.PREPARED_BY: prepared_by,
         WordPlaceholders.FOOTER: footer,
-        "ADD_DOC_STD#": protocol_number_display,
+        "ADD_DOC_STD#": report_number if is_report else protocol_number,
         "ADD_TEST_PROTOCOL": report_number,
     }
 
@@ -273,14 +273,22 @@ def _get_placeholder_replacements() -> Dict[str, str]:
     return replacements
 
 
+def _get_cached_replacements() -> Dict[str, str]:
+    """FIX #6: Return cached replacements, loading once per verification run."""
+    global _CACHED_REPLACEMENTS
+    if _CACHED_REPLACEMENTS is None:
+        _CACHED_REPLACEMENTS = _get_placeholder_replacements()
+    return _CACHED_REPLACEMENTS
+
+
 def _is_valid_placeholder_replacement(template_text: str, normalized_text: str) -> bool:
     """
     Check if difference between template and normalized text is due to valid placeholder replacement.
     Returns True if the normalized text matches what we'd expect after replacing all placeholders.
     """
-    replacements = _get_placeholder_replacements()
+    # FIX #6: Use cached replacements instead of reloading config per call
+    replacements = _get_cached_replacements()
 
-    # Try replacing all placeholders in template text
     expected = template_text
     for placeholder, value in replacements.items():
         if value:
@@ -331,8 +339,6 @@ def validate_table_content_integrity(
 
     _assert_no_merged_cells(target_table, "normalized protocol target table")
 
-    # In the target table, ignore purely empty rows (template placeholders that were not used)
-    # but preserve order.
     target_rows_after_header = list(target_table.rows)[1:] if len(target_table.rows) > 1 else []
     target_data_rows: List[List[str]] = []
     for row in target_rows_after_header:
@@ -358,7 +364,7 @@ def validate_table_content_integrity(
         for col_idx, (src_cell, dst_cell) in enumerate(zip(src_row, dst_row), start=0):
             if src_cell != dst_cell:
                 location = CellLocation(
-                    table_index=0,  # source is fixed; target table is identified by header
+                    table_index=0,
                     row_index=row_idx,
                     col_index=col_idx,
                 )
@@ -405,7 +411,6 @@ def validate_structural_correctness(
             f"Expected {expected_column_count} columns, found {len(header_cells)}."
         )
 
-    # Ensure that we actually have inserted data rows (either into placeholder rows or appended)
     data_rows = list(table.rows)[1:] if len(table.rows) > 1 else []
     non_empty_data_rows = [r for r in data_rows if not _row_is_empty(r)]
     if not non_empty_data_rows:
@@ -423,9 +428,8 @@ def validate_formatting(
     """
     Validate formatting normalization:
     - All sections are landscape.
-    - All tables are set to AutoFit to Window (tblW type=pct, w=5000).
     - Target table has fixed column widths matching the configuration.
-    - Paragraph spacing (before, after) is Normalized (0pt before, 3pt after).
+    - Paragraph spacing (before, after) is normalized in the target table only.
     - Second column paragraphs:
         * Have 'Normal' style.
         * Have no numbering (w:numPr / w:outlineLvl).
@@ -465,15 +469,14 @@ def validate_formatting(
             f"{len(target_table.rows[0].cells)} vs {len(expected_column_widths_cm)}."
         )
 
-    # Validate paragraph spacing across the entire document
+    # Validate paragraph spacing
     expected_before = Pt(WordTableDefaults.DEFAULT_PARAGRAPH_SPACING_BEFORE_PT)
     expected_after = Pt(WordTableDefaults.DEFAULT_PARAGRAPH_SPACING_AFTER_PT)
 
     def _check_spacing(paragraph, context: str) -> None:
         pf = paragraph.paragraph_format
-        # python-docx may represent these as Length or None; normalise via .pt
-        before = getattr(pf.space_before, "pt", 0 if pf.space_before is None else pf.space_before)
-        after = getattr(pf.space_after, "pt", 0 if pf.space_after is None else pf.space_after)
+        before = getattr(pf.space_before, 'pt', 0 if pf.space_before is None else pf.space_before)
+        after = getattr(pf.space_after, 'pt', 0 if pf.space_after is None else pf.space_after)
         if abs(before - expected_before.pt) > 0.01 or abs(after - expected_after.pt) > 0.01:
             raise VerificationError(
                 f"Paragraph spacing mismatch in {context}. "
@@ -481,16 +484,11 @@ def validate_formatting(
                 f"got before={before}pt, after={after}pt."
             )
 
-    # Body paragraphs
-    for idx, p in enumerate(doc.paragraphs):
-        _check_spacing(p, f"body paragraph {idx}")
-
-    # Table paragraphs
-    for ti, table in enumerate(doc.tables):
-        for ri, row in enumerate(table.rows):
-            for ci, cell in enumerate(row.cells):
-                for pi, p in enumerate(cell.paragraphs):
-                    _check_spacing(p, f"table {ti} row {ri} col {ci} paragraph {pi}")
+    # FIX #2: Validate spacing only in the target table (matches normalization scope)
+    for ri, row in enumerate(target_table.rows):
+        for ci, cell in enumerate(row.cells):
+            for pi, p in enumerate(cell.paragraphs):
+                _check_spacing(p, f"target table row {ri} col {ci} paragraph {pi}")
 
     # ---- Second column formatting in the target table ----
     for ri, row in enumerate(target_table.rows[1:], start=1):  # skip header
@@ -577,20 +575,17 @@ def validate_placeholder_replacement(
 
     unresolved = detect_unresolved_placeholders(normalized_doc)
     if unresolved:
-        details = "; ".join(
+        details = '; '.join(
             f"{ph} -> {locations}" for ph, locations in unresolved.items()
         )
         raise VerificationError(
             f"Unresolved placeholders remain in the normalized protocol: {details}"
         )
 
-    # Compute expected replacement values using the same logic as the production replacer
-    replacements = _get_placeholder_replacements()
+    replacements = _get_cached_replacements()
 
     normalized_full_text = _collect_full_document_text(normalized_doc)
 
-    # If template is provided, only enforce values for placeholders that are present in template.
-    # This prevents false failures when config contains values for placeholders not used by a specific template.
     placeholders_to_enforce = set(replacements.keys())
     if template_protocol_path:
         template_doc = _load_document(template_protocol_path)
@@ -742,6 +737,10 @@ def verify_normalized_protocol(
     In strict mode, any error raises VerificationError.
     In non-strict mode, non-critical checks are reported as warnings.
     """
+    # FIX #6: Reset cache at the start of each verification run
+    global _CACHED_REPLACEMENTS
+    _CACHED_REPLACEMENTS = None
+
     report = VerificationReport(errors=[], warnings=[])
 
     def _run(check_name: str, fn, as_warning_in_non_strict: bool = False) -> None:
@@ -763,7 +762,7 @@ def verify_normalized_protocol(
         as_warning_in_non_strict=False,
     )
 
-    # 2. Structural correctness (critical), but allow relaxed column-count policy in non-strict mode
+    # 2. Structural correctness (critical)
     _run(
         "structural_correctness",
         lambda: validate_structural_correctness(

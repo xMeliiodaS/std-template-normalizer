@@ -85,12 +85,13 @@ class TestProtocolNormalization(unittest.TestCase):
 
         required_inputs = [exported_word, template_ready_word]
         missing_files = [p for p in required_inputs if not p or not os.path.exists(p)]
+
         if missing_files:
             self.skipTest(
                 "Missing required input files from config.json: "
                 + ", ".join(repr(p) for p in missing_files)
             )
-        # Set landscape layout for all sections
+
         # Copy rows (excluding header) into template table and create the output document first
         if exported_word.lower().endswith(XLSX_EXTENSION):
             copy_excel_rows_excluding_header_into_table_with_id(
@@ -111,7 +112,6 @@ class TestProtocolNormalization(unittest.TestCase):
         # Make tables autofit to window
         set_tables_autofit_to_window(output_word, output_word, expected_target_headers=["ID"])
 
-
         # Adjust table column widths
         set_table_column_widths(
             output_word,
@@ -129,14 +129,22 @@ class TestProtocolNormalization(unittest.TestCase):
         # Any deviation in content, structure, formatting, placeholders,
         # or template preservation will cause this test to fail with a
         # precise diagnostic message.
-        verify_normalized_protocol(
+        report = verify_normalized_protocol(
             exported_std_path=exported_word,
             template_protocol_path=template_ready_word,
             normalized_protocol_path=output_word,
         )
 
-        # Open file
-        os.startfile(output_word)
+        # FIX #7: Fail on errors and surface warnings
+        self.assertEqual(report.errors, [], f"Verification errors:\n" + "\n".join(report.errors))
+
+        if report.warnings:
+            for w in report.warnings:
+                print(f"[WARN] {w}", file=sys.stderr)
+
+        # FIX #11: Guard os.startfile for non-Windows platforms
+        if sys.platform == "win32":
+            os.startfile(output_word)
 
     def test_target_header_matching_allows_prefix_for_wider_tables(self):
         table = _FakeTable(rows=[["ID", "Step", "Expected result"]])
@@ -153,6 +161,7 @@ class TestProtocolNormalization(unittest.TestCase):
 
 if __name__ == "__main__":
     from src.config.logging_config import setup_logging, get_logger
+
     setup_logging()
     log = get_logger(__name__)
 
@@ -162,7 +171,6 @@ if __name__ == "__main__":
         APP_DATA_FOLDER_NAME
     )
     config_path = os.path.join(appdata_folder, CONFIG_FILE_NAME)
-
     log.info("Started document normalization. Config path: %s", config_path)
 
     # Load config
