@@ -5,7 +5,7 @@ __pycache__/
 
 # C extensions
 *.so
-
+PROJECT_DUMP.txt
 # Distribution / packaging
 .Python
 build/
