@@ -135,16 +135,22 @@ class TestProtocolNormalization(unittest.TestCase):
             normalized_protocol_path=output_word,
         )
 
-        # FIX #7: Fail on errors and surface warnings
-        self.assertEqual(report.errors, [], f"Verification errors:\n" + "\n".join(report.errors))
+        # Always open the output file so the user can inspect it,
+        # regardless of verification outcome.
+        if sys.platform == "win32":
+            os.startfile(output_word)
 
+        # Surface warnings to stderr for visibility
         if report.warnings:
             for w in report.warnings:
                 print(f"[WARN] {w}", file=sys.stderr)
 
-        # FIX #11: Guard os.startfile for non-Windows platforms
-        if sys.platform == "win32":
-            os.startfile(output_word)
+        # Surface errors to stderr, then fail the test
+        if report.errors:
+            for e in report.errors:
+                print(f"[ERROR] {e}", file=sys.stderr)
+
+        self.assertEqual(report.errors, [], f"Verification errors:\n" + "\n".join(report.errors))
 
     def test_target_header_matching_allows_prefix_for_wider_tables(self):
         table = _FakeTable(rows=[["ID", "Step", "Expected result"]])

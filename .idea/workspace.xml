@@ -5,11 +5,8 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="82972bdf-4e00-4791-908f-644f94cab44c" name="Changes" comment="">
-      <change afterPath="$PROJECT_DIR$/src/validation/__init__.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/.gitignore" beforeDir="false" afterPath="$PROJECT_DIR$/.gitignore" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/config/constants.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/config/constants.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/validation/docx_verifier.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/validation/docx_verifier.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/word/placeholder_replacer.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/word/placeholder_replacer.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/test/test_document_normalization.py" beforeDir="false" afterPath="$PROJECT_DIR$/test/test_document_normalization.py" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
@@ -34,12 +31,12 @@
     &quot;assignee&quot;: &quot;xMeliiodaS&quot;
   }
 }</component>
-  <component name="GithubPullRequestsUISettings">{
-  &quot;selectedUrlAndAccountId&quot;: {
-    &quot;url&quot;: &quot;https://github.com/xMeliiodaS/std-template-normalizer.git&quot;,
-    &quot;accountId&quot;: &quot;2a885a60-0ee7-49a7-a041-dee4549b3491&quot;
+  <component name="GithubPullRequestsUISettings"><![CDATA[{
+  "selectedUrlAndAccountId": {
+    "url": "https://github.com/xMeliiodaS/std-template-normalizer.git",
+    "accountId": "7c0f9651-7125-45fe-b603-ea9420135dc0"
   }
-}</component>
+}]]></component>
   <component name="ProjectColorInfo">{
   &quot;associatedIndex&quot;: 5
 }</component>
@@ -82,6 +79,7 @@
       <option name="IS_MODULE_SDK" value="true" />
       <option name="ADD_CONTENT_ROOTS" value="true" />
       <option name="ADD_SOURCE_ROOTS" value="true" />
+      <option name="RUN_TOOL" value="" />
       <option name="SCRIPT_NAME" value="$PROJECT_DIR$/test/test_document_normalization.py" />
       <option name="PARAMETERS" value="" />
       <option name="SHOW_COMMAND_LINE" value="false" />
@@ -95,7 +93,7 @@
   <component name="SharedIndexes">
     <attachedChunks>
       <set>
-        <option value="bundled-python-sdk-4c141bd692a7-e2d783800521-com.jetbrains.pycharm.community.sharedIndexes.bundled-PC-251.26927.90" />
+        <option value="bundled-python-sdk-f2b7a9f6281b-6e1f45a539f7-com.jetbrains.pycharm.pro.sharedIndexes.bundled-PY-253.29346.142" />
       </set>
     </attachedChunks>
   </component>
