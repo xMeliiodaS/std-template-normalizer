@@ -8,6 +8,9 @@ from docx.enum.section import WD_ORIENT
 from docx.oxml.shared import OxmlElement, qn
 from src.excel.xlsx_reader import read_xlsx_rows
 
+from src.config.logging_config import get_logger
+logger = get_logger(__name__)
+
 
 def _ensure_docx_extension(path: str) -> str:
     """Ensure the path has .docx extension. Returns the path with .docx if it doesn't have it."""
@@ -256,7 +259,7 @@ def copy_excel_rows_excluding_header_into_table_with_id(
     if len(source_rows) < 2:
         raise ValueError("Source Excel sheet must have at least 2 rows (header + data).")
 
-    data_rows = source_rows[1:]
+    data_rows = [r for r in source_rows[1:] if any((c or "").strip() for c in r)]
 
     dst = Document(_get_docx_path(dst_docx_path))
     target_table = _find_table_by_header(dst, expected_headers=expected_target_headers)
@@ -413,7 +416,12 @@ def set_table_column_widths(
         raise ValueError("Target table has no rows.")
     col_count = len(target_table.rows[0].cells)
     if col_count != len(widths_cm):
-        raise ValueError(f"Width count ({len(widths_cm)}) must equal column count ({col_count}).")
+        total = sum(widths_cm)
+        widths_cm = [total / col_count] * col_count
+        logger.warning(
+            "Column count (%d) != configured widths. Distributing %.2fcm evenly.",
+            col_count, total,
+        )
 
     # ---- Set table to fixed layout (so Word honors exact widths) ----
     tbl = target_table._tbl

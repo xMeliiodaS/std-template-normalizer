@@ -204,7 +204,9 @@ def replace_placeholders_using_config(docx_path, output_path=None):
         WordPlaceholders.PREPARED_BY: prepared_by,
         WordPlaceholders.FOOTER: footer,
         # Legacy placeholders
-        "ADD_DOC_STD#": report_number if is_report else protocol_number
+        # Legacy placeholders
+        "ADD_DOC_STD#": report_number if is_report else protocol_number,
+        "ADD_TEST_PROTOCOL": report_number
     }
 
     # Override DOC_TYPE, DOC_RECORD, DOC_TYPE_STx when doc_type is "protocol" or "report"

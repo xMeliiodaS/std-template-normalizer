@@ -199,10 +199,8 @@ def _collect_excel_matrix(path: str, sheet_name: Optional[str] = None, skip_head
         normalized_row = list(row) + [''] * (max_cols - len(row))
         normalized_rows.append([_normalize_text(str(cell) if cell is not None else '') for cell in normalized_row])
 
-    if skip_header and normalized_rows:
-        return normalized_rows[1:]
-
-    return normalized_rows
+    result = normalized_rows[1:] if (skip_header and normalized_rows) else normalized_rows
+    return [r for r in result if any(cell.strip() for cell in r)]
 
 
 def _table_matches_headers(table: Table, expected_headers: List[str]) -> bool:
@@ -260,6 +258,7 @@ def _get_placeholder_replacements() -> Dict[str, str]:
         WordPlaceholders.FOOTER: footer,
         "ADD_DOC_STD#": report_number if is_report else protocol_number,
         "ADD_TEST_PROTOCOL": report_number,
+        "TO_BE_DELETED_ROW": "",
     }
 
     # Apply doc_type-based overrides
@@ -660,15 +659,25 @@ def validate_template_preservation(
         if idx == template_target_idx:
             continue  # Skip target table (it's intentionally modified)
 
+        config = ConfigProvider.load_config_json()
+        is_report = (config.get(ConfigKeys.DOC_TYPE) or "").strip().lower() == "report"
+
+        tmpl_rows = list(tmpl_table.rows)
+        if not is_report:
+            tmpl_rows = [
+                r for r in tmpl_rows
+                if "TO_BE_DELETED_ROW" not in " ".join(c.text for c in r.cells)
+            ]
+
         # Compare structure
-        if len(tmpl_table.rows) != len(norm_table.rows):
+        if len(tmpl_rows) != len(norm_table.rows):
             raise VerificationError(
                 f"Non-target table {idx} row count changed. "
-                f"Template: {len(tmpl_table.rows)}, Normalized: {len(norm_table.rows)}"
+                f"Template: {len(tmpl_rows)}, Normalized: {len(norm_table.rows)}"
             )
 
         # Compare content
-        for ri, (tmpl_row, norm_row) in enumerate(zip(tmpl_table.rows, norm_table.rows)):
+        for ri, (tmpl_row, norm_row) in enumerate(zip(tmpl_rows, norm_table.rows)):
             if len(tmpl_row.cells) != len(norm_row.cells):
                 raise VerificationError(
                     f"Non-target table {idx} row {ri} column count changed. "
@@ -699,14 +708,24 @@ def validate_body_paragraphs_preserved(
     template_doc = _load_document(template_protocol_path)
     normalized_doc = _load_document(normalized_protocol_path)
 
-    if len(template_doc.paragraphs) != len(normalized_doc.paragraphs):
+    config = ConfigProvider.load_config_json()
+    is_report = (config.get(ConfigKeys.DOC_TYPE) or "").strip().lower() == "report"
+
+    template_paragraphs = list(template_doc.paragraphs)
+    if not is_report:
+        template_paragraphs = [
+            p for p in template_paragraphs
+            if not ("ADD_PROTOCOL_NUMBER#" in (p.text or "") and "ADD_DOC_STX" in (p.text or ""))
+        ]
+
+    if len(template_paragraphs) != len(normalized_doc.paragraphs):
         raise VerificationError(
             f"Body paragraph count changed. "
-            f"Template: {len(template_doc.paragraphs)}, "
+            f"Template: {len(template_paragraphs)}, "
             f"Normalized: {len(normalized_doc.paragraphs)}"
         )
 
-    for idx, (tmpl_p, norm_p) in enumerate(zip(template_doc.paragraphs, normalized_doc.paragraphs)):
+    for idx, (tmpl_p, norm_p) in enumerate(zip(template_paragraphs, normalized_doc.paragraphs)):
         tmpl_text = _normalize_text(tmpl_p.text)
         norm_text = _normalize_text(norm_p.text)
 

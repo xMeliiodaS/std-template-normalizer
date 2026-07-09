@@ -7,7 +7,6 @@ from src.config.config_provider import ConfigProvider
 from src.word.table_handler import (
     set_paragraph_spacing,
     set_table_column_widths,
-    set_tables_autofit_to_window,
     set_landscape_for_all_sections,
     copy_table_rows_excluding_header_into_table_with_id,
     copy_excel_rows_excluding_header_into_table_with_id,
@@ -109,9 +108,6 @@ class TestProtocolNormalization(unittest.TestCase):
         # From this point forward, normalize the generated output document in-place
         set_landscape_for_all_sections(output_word, output_word)
 
-        # Make tables autofit to window
-        set_tables_autofit_to_window(output_word, output_word, expected_target_headers=["ID"])
-
         # Adjust table column widths
         set_table_column_widths(
             output_word,
@@ -137,7 +133,9 @@ class TestProtocolNormalization(unittest.TestCase):
 
         # Always open the output file so the user can inspect it,
         # regardless of verification outcome.
-        if sys.platform == "win32":
+        if (sys.platform == "win32"
+                and os.getenv("STE_OPEN_OUTPUT", "1") == "1"
+                and not report.errors):
             os.startfile(output_word)
 
         # Surface warnings to stderr for visibility
