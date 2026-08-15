@@ -136,7 +136,6 @@ def build_placeholder_replacements(
 
     replacements = {
         WordPlaceholders.PROTOCOL_NUMBER: protocol_number,
-        WordPlaceholders.REPORT_NUMBER: report_number,
         WordPlaceholders.STD_NAME: std_name,
         WordPlaceholders.PLAN_NUMBER: test_plan,
 

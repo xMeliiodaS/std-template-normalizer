@@ -483,14 +483,12 @@ def detect_unresolved_placeholders(doc: Document) -> Dict[str, List[str]]:
         WordPlaceholders.STX_TYPE,
         WordPlaceholders.DOC_RECORD,
         WordPlaceholders.PROTOCOL_NUMBER,
-        WordPlaceholders.REPORT_NUMBER,
         WordPlaceholders.STD_NAME,
         WordPlaceholders.PLAN_NUMBER,
         WordPlaceholders.STX_NUMBER,
         WordPlaceholders.PREPARED_BY,
         WordPlaceholders.FOOTER,
         "ADD_DOC_STD#",
-        "ADD_TEST_PROTOCOL",
     ]
 
     hits: Dict[str, List[str]] = {ph: [] for ph in placeholders}
@@ -507,7 +505,34 @@ def detect_unresolved_placeholders(doc: Document) -> Dict[str, List[str]]:
                 hits[ph].append(location)
 
     # Remove placeholders that were not found
-    return {ph: locs for ph, locs in hits.items() if locs}
+    unresolved = {
+        placeholder: locations
+        for placeholder, locations in hits.items()
+        if locations
+    }
+
+    generic_placeholder_pattern = re.compile(
+        r"\bADD_[A-Z0-9_]+#?\b"
+    )
+
+    for scope, ti, ri, ci, paragraph in _iter_all_paragraphs(doc):
+        text = paragraph.text or ""
+
+        for match in generic_placeholder_pattern.findall(text):
+            location = scope
+
+            if ti is not None:
+                location += f", table={ti}"
+
+            if ri is not None and ci is not None:
+                location += f", row={ri}, col={ci}"
+
+            unresolved.setdefault(match, [])
+
+            if location not in unresolved[match]:
+                unresolved[match].append(location)
+
+    return unresolved
 
 
 def _collect_full_document_text(doc: Document) -> str:

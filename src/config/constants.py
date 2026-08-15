@@ -30,7 +30,7 @@ class ConfigKeys:
     DOC_RECORD = "doc_record"
     PROTOCOL_NUMBER = "protocol_number"       # -> ADD_PROTOCOL_NUMBER#
     STD_NAME = "std_name"                     # -> ADD_STD_NAME
-    REPORT_NUMBER = "report_number"           # -> ADD_REPORT_NUMBER
+    REPORT_NUMBER = "report_number"           # Used by ADD_DOC_STD# in Report mode
     TEST_PLAN = "test_plan"                   # -> ADD_PLAN_NUMBER
     STX_NUMBER = "stx_number"                 # -> ADD_STX_NUMBER
     PREPARED_BY = "prepared_by"               # -> ADD_PREPARED_BY
@@ -39,7 +39,6 @@ class ConfigKeys:
     FOOTER = "footer"
 
     # FIX #9: Removed TEST_PROTOCOL = "test_plan" (was identical to TEST_PLAN).
-    # It is already covered by LEGACY_KEYS["TEST_PROTOCOL"] below.
 
     LEGACY_KEYS = {
         "DOC_TYPE": "Doc_type",
@@ -49,7 +48,6 @@ class ConfigKeys:
         "STD_NAME": "STD_name",
         "PLAN_NUMBER": "PLAN-number",
         "PREPARED_BY": "Prepared_by",
-        "TEST_PROTOCOL": "Test_protocol",
         "FOOTER": "Footer",
         "REPORT_NUMBER": "Report_number",
         "STX_NUMBER": "STx_number",
@@ -66,7 +64,6 @@ class WordPlaceholders:
     STX_TYPE = "ADD_STX_TYPE"              # doc_type -> STD / STR (inline text)
     DOC_RECORD = "ADD_DOC_RECORD"          # doc_type -> Protocol / Report
     PROTOCOL_NUMBER = "ADD_PROTOCOL_NUMBER#"  # protocol_number
-    REPORT_NUMBER = "ADD_REPORT_NUMBER"    # report_number
     STD_NAME = "ADD_STD_NAME"              # std_name
     PLAN_NUMBER = "ADD_PLAN_NUMBER"        # test_plan
     STX_NUMBER = "ADD_STX_NUMBER"          # stx_number
