@@ -18,7 +18,10 @@ from src.config.constants import (
     XmlTags,
     ConfigKeys,
 )
-from src.word.placeholder_replacer import get_doc_type_replacements
+from src.word.placeholder_values import (
+    build_placeholder_replacements,
+    is_report,
+)
 from src.word.table_handler import _get_docx_path, _find_table_by_header, _row_is_empty
 
 # FIX #6: Module-level cache for placeholder replacements (reset per verification run)
@@ -225,58 +228,11 @@ def _table_matches_headers(table: Table, expected_headers: List[str]) -> bool:
     )
 
 
-def _get_placeholder_replacements() -> Dict[str, str]:
-    """Get all placeholder replacements from config including doc_type overrides."""
-    config = ConfigProvider.load_config_json()
-
-    protocol_number = config.get(ConfigKeys.PROTOCOL_NUMBER) or config.get(ConfigKeys.LEGACY_KEYS["DOC_STD"]) or ""
-    stx_number = config.get(ConfigKeys.STX_NUMBER) or config.get(ConfigKeys.LEGACY_KEYS["STX_NUMBER"]) or ""
-    protocol_number_display = (
-        f"{protocol_number} ({stx_number})".strip()
-        if (protocol_number and stx_number)
-        else (protocol_number or stx_number)
-    )
-    std_name = config.get(ConfigKeys.STD_NAME) or config.get(ConfigKeys.LEGACY_KEYS["STD_NAME"]) or ""
-    report_number = config.get(ConfigKeys.REPORT_NUMBER) or config.get(ConfigKeys.LEGACY_KEYS["REPORT_NUMBER"]) or ""
-    test_plan = config.get(ConfigKeys.TEST_PLAN) or config.get(ConfigKeys.LEGACY_KEYS["PLAN_NUMBER"]) or ""
-    prepared_by = config.get(ConfigKeys.PREPARED_BY) or config.get(ConfigKeys.LEGACY_KEYS["PREPARED_BY"]) or ""
-    footer = config.get(ConfigKeys.FOOTER) or config.get(ConfigKeys.LEGACY_KEYS["FOOTER"]) or ""
-
-    # FIX #1: Report-aware ADD_DOC_STD# (matches replacer logic)
-    is_report = (config.get(ConfigKeys.DOC_TYPE) or "").strip().lower() == "report"
-
-    replacements = {
-        WordPlaceholders.DOC_TYPE: config.get(ConfigKeys.DOC_TYPE) or config.get(ConfigKeys.LEGACY_KEYS["DOC_TYPE"]) or "",
-        WordPlaceholders.DOC_TYPE_STx: config.get(ConfigKeys.DOC_STX) or config.get(ConfigKeys.LEGACY_KEYS["DOC_TYPE_STX"]) or "",
-        WordPlaceholders.DOC_RECORD: config.get(ConfigKeys.DOC_RECORD) or config.get(ConfigKeys.LEGACY_KEYS["DOC_RECORD"]) or "",
-        WordPlaceholders.PROTOCOL_NUMBER: protocol_number,
-        WordPlaceholders.REPORT_NUMBER: report_number,
-        WordPlaceholders.STD_NAME: std_name,
-        WordPlaceholders.PLAN_NUMBER: test_plan,
-        WordPlaceholders.STX_NUMBER: f"({stx_number})" if stx_number else "",  # FIX #1: Matches replacer format
-        WordPlaceholders.PREPARED_BY: prepared_by,
-        WordPlaceholders.FOOTER: footer,
-        "ADD_DOC_STD#": report_number if is_report else protocol_number,
-        "ADD_TEST_PROTOCOL": report_number,
-        "TO_BE_DELETED_ROW": "",
-    }
-
-    # Apply doc_type-based overrides
-    doc_type_from_config = config.get(ConfigKeys.DOC_TYPE) or config.get(
-        ConfigKeys.LEGACY_KEYS["DOC_TYPE"]
-    )
-    doc_type_replacements = get_doc_type_replacements(doc_type_from_config)
-    if doc_type_replacements:
-        replacements.update(doc_type_replacements)
-
-    return replacements
-
-
 def _get_cached_replacements() -> Dict[str, str]:
     """FIX #6: Return cached replacements, loading once per verification run."""
     global _CACHED_REPLACEMENTS
     if _CACHED_REPLACEMENTS is None:
-        _CACHED_REPLACEMENTS = _get_placeholder_replacements()
+        _CACHED_REPLACEMENTS = build_placeholder_replacements()
     return _CACHED_REPLACEMENTS
 
 
@@ -524,6 +480,7 @@ def detect_unresolved_placeholders(doc: Document) -> Dict[str, List[str]]:
     placeholders = [
         WordPlaceholders.DOC_TYPE,
         WordPlaceholders.DOC_TYPE_STx,
+        WordPlaceholders.STX_TYPE,
         WordPlaceholders.DOC_RECORD,
         WordPlaceholders.PROTOCOL_NUMBER,
         WordPlaceholders.REPORT_NUMBER,
@@ -660,10 +617,10 @@ def validate_template_preservation(
             continue  # Skip target table (it's intentionally modified)
 
         config = ConfigProvider.load_config_json()
-        is_report = (config.get(ConfigKeys.DOC_TYPE) or "").strip().lower() == "report"
+        report_mode = is_report(config)
 
         tmpl_rows = list(tmpl_table.rows)
-        if not is_report:
+        if not report_mode:
             tmpl_rows = [
                 r for r in tmpl_rows
                 if "TO_BE_DELETED_ROW" not in " ".join(c.text for c in r.cells)
@@ -709,13 +666,13 @@ def validate_body_paragraphs_preserved(
     normalized_doc = _load_document(normalized_protocol_path)
 
     config = ConfigProvider.load_config_json()
-    is_report = (config.get(ConfigKeys.DOC_TYPE) or "").strip().lower() == "report"
+    report_mode = is_report(config)
 
     template_paragraphs = list(template_doc.paragraphs)
-    if not is_report:
+    if not report_mode:
         template_paragraphs = [
             p for p in template_paragraphs
-            if not ("ADD_PROTOCOL_NUMBER#" in (p.text or "") and "ADD_DOC_STX" in (p.text or ""))
+            if not ("ADD_PROTOCOL_NUMBER#" in (p.text or "") and "ADD_STX_NUMBER" in (p.text or ""))
         ]
 
     if len(template_paragraphs) != len(normalized_doc.paragraphs):

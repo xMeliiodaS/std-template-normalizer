@@ -63,6 +63,7 @@ class WordPlaceholders:
     """Word placeholder tokens. Field (C#) = config key = placeholder name."""
     DOC_TYPE = "ADD_DOC_TYPE"              # doc_type -> Design / Report
     DOC_TYPE_STx = "ADD_DOC_STX"           # doc_type -> STD / STR
+    STX_TYPE = "ADD_STX_TYPE"              # doc_type -> STD / STR (inline text)
     DOC_RECORD = "ADD_DOC_RECORD"          # doc_type -> Protocol / Report
     PROTOCOL_NUMBER = "ADD_PROTOCOL_NUMBER#"  # protocol_number
     REPORT_NUMBER = "ADD_REPORT_NUMBER"    # report_number
